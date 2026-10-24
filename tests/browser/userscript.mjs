@@ -42,7 +42,15 @@ try{
   await page.evaluate(()=>__menus['点击语境查词：阅读设置']());await page.locator('lextide-reader #bilingual-enabled').check();await page.locator('lextide-reader .panel .close').click();
   await page.waitForFunction(()=>document.querySelector('main').textContent.includes('清晨很安静'));
   await page.locator('lextide-reader .bubble').click();await page.waitForFunction(()=>document.querySelector('main').innerHTML===__originalHTML);
-  assert.equal(await page.evaluate(()=>document.querySelector('#original')===__original),true);assert.equal(await page.locator('lextide-reader #words').isChecked(),false);
+  assert.equal(await page.evaluate(()=>document.querySelector('#original')===__original),true);
+  assert.equal(await page.locator('lextide-reader .bubble').getAttribute('aria-pressed'),'false');assert.equal(await page.locator('main .lextide-translation').count(),0);
+  await page.waitForFunction(()=>{const prefs=Object.entries(__values).filter(([key])=>key.includes('prefs:')).map(([,value])=>value);return prefs.length>0&&prefs.every(value=>value.words===false&&value.enabled===false);});
+  const pausedRequests=await page.evaluate(()=>__requests.length);await page.evaluate(()=>__menus['点击语境查词：阅读设置']());
+  assert.equal(await page.locator('lextide-reader #words').isChecked(),true,'paused settings retain the selected lookup feature');assert.equal(await page.locator('lextide-reader #bilingual-enabled').isChecked(),true,'paused settings retain the selected body feature');assert.equal(await page.evaluate(()=>__requests.length),pausedRequests,'opening paused settings must not send text');
+  await page.locator('lextide-reader .panel .close').click();await page.locator('lextide-reader .bubble').click();await page.waitForFunction(()=>document.querySelector('main').textContent.includes('清晨很安静'));
+  assert.equal(await page.locator('lextide-reader .bubble').getAttribute('aria-pressed'),'true');assert.equal(await page.locator('lextide-reader #bilingual-enabled').isChecked(),true);assert.equal(await page.evaluate(()=>document.querySelector('#original')===__original),true);
+  await page.locator('lextide-reader .bubble').click();await page.waitForFunction(()=>document.querySelector('main').innerHTML===__originalHTML);
+  report.checks.push(api+': pause stops both features and persists inactivity; settings retain selection without requests; resume restores body translation; next-page defaults stay independent');
   report.checks.push(api+': touch lookup, correct occurrence/sense, favorite, selection explicit dispatch, body translation, original node restoration');
   // A new mount must remain off even when previous settings enabled translation.
   const stored=await page.evaluate(()=>structuredClone(__values));for(const key of Object.keys(stored))if(key.includes('prefs:'))stored[key]={...stored[key],words:true,enabled:true,mode:'bilingual'};
