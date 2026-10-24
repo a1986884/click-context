@@ -3,6 +3,7 @@ import {cleanContext,contextPrompt,parseContextResult,CONTEXT_MODEL,CONTEXT_VALI
 const CONTEXT_INFERENCE_TIMEOUT_MS=16000;
 const TRANSLATION_INFERENCE_TIMEOUT_MS=16000;
 const TRANSLATION_FAILURE_REASONS=['cancelled','timeout','inference','invalid-result','capacity'];
+function quotaError(error){return error?.code===3036||error?.code==='3036'||Array.isArray(error?.errors)&&error.errors.some(item=>item?.code===3036||item?.code==='3036')||typeof error?.message==='string'&&/^3036: You have used up your daily free allocation/.test(error.message);}
 function capacityError(error){return error?.code===3040||error?.code==='3040'||Array.isArray(error?.errors)&&error.errors.some(item=>item?.code===3040)||typeof error?.message==='string'&&error.message.includes('3040: Capacity temporarily exceeded');}
 function inference(run,signal){
  return new Promise((resolve,reject)=>{
@@ -11,9 +12,9 @@ function inference(run,signal){
   Promise.resolve().then(()=>{signal.throwIfAborted();return run();}).then(value=>{signal.removeEventListener('abort',abort);resolve(value);},error=>{signal.removeEventListener('abort',abort);reject(error);});
  });
 }
-function contextErrorBody(code,validationReason){
- const messages={CONTEXT_BUSY:'语境服务繁忙，请稍后重试',RATE_LIMITED:'语境查询过于频繁，请稍后重试',CONTEXT_CANCELLED:'语境请求已取消',CONTEXT_TIMEOUT:'语境分析超时，请重试',CONTEXT_INVALID_RESULT:'语境结果未通过校验，请重试',CONTEXT_UNAVAILABLE:'语境服务暂不可用，请重试'};
- return {ok:false,error:messages[code],code,retryable:false,...(code==='CONTEXT_INVALID_RESULT'?{validationReason:CONTEXT_VALIDATION_REASONS.includes(validationReason)?validationReason:'unknown'}:{})};
+function contextErrorBody(code,validationReason,incompleteReason){
+ const messages={CONTEXT_QUOTA_EXCEEDED:'内置 AI 当日额度已用完，请更换语境 AI 或等待额度重置',CONTEXT_BUSY:'语境服务繁忙，请稍后重试',RATE_LIMITED:'语境查询过于频繁，请稍后重试',CONTEXT_CANCELLED:'语境请求已取消',CONTEXT_TIMEOUT:'语境分析超时，请重试',CONTEXT_INVALID_RESULT:'语境结果未通过校验，请重试',CONTEXT_UNAVAILABLE:'语境服务暂不可用，请重试'};
+ return {ok:false,error:messages[code],code,retryable:false,...(code==='CONTEXT_INVALID_RESULT'?{validationReason:CONTEXT_VALIDATION_REASONS.includes(validationReason)?validationReason:'unknown'}:{}),...(code==='CONTEXT_INVALID_RESULT'&&validationReason==='incomplete'?{incompleteReason:['max-output-tokens','content-filter'].includes(incompleteReason)?incompleteReason:'unknown',outputTokenLimit:900}:{})};
 }
 export default {async fetch(request,env){
  const path=new URL(request.url).pathname,userscript=path==='/userscript/meaning'||path==='/userscript/translate';
@@ -43,6 +44,7 @@ export default {async fetch(request,env){
    let validating=false;
    try{const raw=await inference(()=>env.AI.run(translationModel(input),translationPrompt(input),{signal,...(input.translationRevision===TRANSLATION_CACHE_VERSION?{rejectIfBusy:true}:{})}),signal);signal.throwIfAborted();validating=true;return reply({ok:true,data:parseTranslationResult(raw,input)});}
    catch(error){
+    if(!validating&&!signal.aborted&&quotaError(error))return reply({ok:false,error:'内置 AI 当日额度已用完，请更换翻译引擎或等待额度重置',code:'TRANSLATION_QUOTA_EXCEEDED',retryable:false},503);
     if(!validating&&!signal.aborted&&input.translationRevision===TRANSLATION_CACHE_VERSION&&capacityError(error))return reply({ok:false,error:'内置翻译服务繁忙，请稍后重试',code:'TRANSLATION_BUSY',failureReason:'capacity',translationRevision:input.translationRevision,outputTokenLimit:translationOutputLimit(input),retryable:false},503);
     if(attempt===1||signal.aborted||Date.now()-started>5000){
     const failureReason=request.signal.aborted?'cancelled':signal.aborted?'timeout':validating?'invalid-result':'inference';
@@ -58,10 +60,11 @@ export default {async fetch(request,env){
   let validating=false;
   try{const raw=await inference(()=>env.AI.run(CONTEXT_MODEL,contextPrompt(input),{signal,...(input.contextRevision===CONTEXT_CURRENT_REVISION?{rejectIfBusy:true}:{})}),signal);signal.throwIfAborted();validating=true;return reply({ok:true,data:parseContextResult(raw,input)});}
   catch(error){
+   if(!validating&&!signal.aborted&&quotaError(error))return reply(contextErrorBody('CONTEXT_QUOTA_EXCEEDED'),503);
    if(!validating&&!signal.aborted&&input.contextRevision===CONTEXT_CURRENT_REVISION&&capacityError(error))return reply(contextErrorBody('CONTEXT_BUSY'),503);
    if(attempt===1||signal.aborted||Date.now()-started>7000){
    const code=request.signal.aborted?'CONTEXT_CANCELLED':signal.aborted?'CONTEXT_TIMEOUT':validating?'CONTEXT_INVALID_RESULT':'CONTEXT_UNAVAILABLE';
-   return reply(contextErrorBody(code,error?.validationReason),503);
+   return reply(contextErrorBody(code,error?.validationReason,error?.incompleteReason),503);
   }}
  }
 }};
