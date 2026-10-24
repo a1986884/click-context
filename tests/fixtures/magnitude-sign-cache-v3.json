@@ -1,0 +1,35 @@
+{
+  "kind": "actual previous generated script cache captured using synthetic GM/API responses; deliberately wrong signed translation; no real vendor or credential",
+  "baselineVersion": "0.7.119",
+  "baselineScriptSHA256": "162f569d40cb180970472a0e252dfdd18e273f1e414f929780f38ce2b525102a",
+  "source": "The temperature fell to 2.0 degrees Celsius.",
+  "target": "温度降至负2.0摄氏度。",
+  "profileId": "example-google",
+  "profileCacheRevision": "11111111-1111-4111-8111-111111111111",
+  "cases": [
+    {
+      "engine": "builtin",
+      "requests": 1,
+      "values": {
+        "click-context:v1:translation-cache:v3:13": {
+          "cloudflare-ai:en-zh:v5:client-v2|The temperature fell to 2.0 degrees Celsius.": {
+            "at": 1792803146586,
+            "value": "温度降至负2.0摄氏度。"
+          }
+        }
+      }
+    },
+    {
+      "engine": "google",
+      "requests": 1,
+      "values": {
+        "click-context:v1:translation-cache:v3:13": {
+          "engine:example-google:11111111-1111-4111-8111-111111111111:en-zh:v4|The temperature fell to 2.0 degrees Celsius.": {
+            "at": 1792803147100,
+            "value": "温度降至负2.0摄氏度。"
+          }
+        }
+      }
+    }
+  ]
+}

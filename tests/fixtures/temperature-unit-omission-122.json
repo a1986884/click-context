@@ -1,0 +1,11 @@
+{
+  "kind": "actual saved122 builtin translation accepted by old automatic checks; manual rejected Celsius omission; no vendor key/native acceptance",
+  "baselineVersion": "0.7.122",
+  "baselineScriptSHA256": "fa88b7cc650a0dac165374beb074ab310d86a233d951ce7e27da3ff98e3612fa",
+  "source": "NaCl at 0.9% was heated to -2.0 degrees Celsius; see Fig. 12 and Eq. (4).",
+  "actual": "NaCl 在 0.9% 时被加热至 -2.0 度；见图 12 和 Eq. (4)。",
+  "automaticStatus": "passed",
+  "manualStatus": "failed",
+  "issue": "Celsius omitted; concentration awkward",
+  "sourceRunId": "0.7.122-2026-10-24T03-55-27-810Z-353977"
+}

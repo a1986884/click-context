@@ -1,0 +1,14 @@
+// Original synthetic excerpts in the providers' HTML structures, not a dictionary corpus.
+const youdao=(head,body,extra='')=>`<!doctype html><html><body>${extra}<div id="authTrans"><h3>柯林斯英汉双解大词典</h3><div id="collinsResult"><h4><span class="title">${head}</span><em class="phonetic">/test/</em><span class="additional pattern">( ${head}s )</span></h4><ul>${body}</ul></div></div></body></html>`;
+const sense=(pos,en,zh,example='')=>`<li><div class="collinsMajorTrans"><p><span class="collinsOrder">1.</span><span class="additional">${pos}</span> ${en} ${zh} <span class="additional">[测试标签]</span></p></div>${example}</li>`;
+export const dictionaryFixtures=[
+ {name:'bank-multiple-pos',kind:'youdao-senses',html:youdao('bank',sense('N-COUNT','A fictional institution that holds money.','银行')+sense('VERB','To place money in such an institution.','存钱','<div class="examples"><p>She banked her pay.</p><p>她存入工资。</p></div>'))},
+ {name:'carry-out-phrase',kind:'youdao-senses',html:youdao('carry out',sense('PHRASE','To carry out a plan is to put it into practice.','实行'))},
+ {name:'listed-reference',kind:'youdao-senses',html:youdao('listed',sense('VERB','Listed is the past tense of list.','list 的过去式'))},
+ {name:'unit-case-whitespace-entities',kind:'youdao-senses',html:youdao('unit',sense('N-COUNT','A <B>unit</B> &amp; its parts form one thing.','单位&nbsp;整体')).replaceAll('<p>','<P>\n  ').replaceAll('</p>','\n</P>')},
+ {name:'account-embedded-phrase',kind:'youdao-senses',phrase:'take into account',html:youdao('account',sense('N-COUNT','A fictional report.','叙述')+sense('PHRASE','If you take something into account, you consider it.','考虑到'))},
+ {name:'unit-template-inert',kind:'youdao-senses',html:youdao('unit',sense('N-COUNT','A unit <template>forged definition</template> is one part.<script>forged text</script>','单位'),'<template><div id="authTrans"><h3>柯林斯英汉双解</h3><div id="collinsResult"><h4><span class="title">forged</span></h4></div></div></template><script>globalThis.__parserExecuted=true</script><iframe src="https://must-not-fetch.invalid/frame"></iframe><img src="https://must-not-fetch.invalid/image">')},
+ {name:'ocean-official-en',kind:'collins-en',html:'<DIV class="dictentry"><SPAN class="orth">ocean</SPAN><span class="pos">noun</span><div class="def">A very large body of salt water &amp; its connected seas.</div><span class="cit type-example"><span class="quote">The fictional boat crossed it.</span></span><template><span class="orth">forged</span></template></DIV>'},
+ {name:'ocean-official-zh',kind:'collins-zh',html:'<div class="dictionary biling"><span class="orth">ocean</span><span class="pos">noun</span><span class="pron">/test/</span><span class="cit type-translation"><span class="quote">海洋&nbsp;水域</span></span></div>'},
+ {name:'unit-first-sense',kind:'youdao-first',html:youdao('unit',sense('N-COUNT','A unit is one part &amp; one group.','单位'))}
+];
