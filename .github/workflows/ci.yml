@@ -1,0 +1,101 @@
+name: Verify Click Context
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      native_acceptance:
+        description: Run installed extension acceptance and real public service probes
+        type: boolean
+        default: false
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+permissions:
+  contents: read
+jobs:
+  ordinary:
+    name: Source and ordinary browser tests (no native acceptance)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      RELEASE_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npm run check
+      - run: npm run audit:source
+      - run: npm run audit:history
+      - run: npm test
+      - run: npx playwright install --with-deps chromium
+      - name: Use the installed Playwright browser
+        run: |
+          node --input-type=module <<'JS'
+          import {appendFileSync} from 'node:fs';
+          import {chromium} from 'playwright';
+          appendFileSync(process.env.GITHUB_ENV, 'CHROMIUM_EXECUTABLE_PATH=' + chromium.executablePath() + '\n');
+          JS
+      - run: npm run test:browser
+      - run: npm run test:userscript
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ordinary-browser-evidence
+          path: test-results
+      - uses: actions/upload-artifact@v4
+        with:
+          name: userscript-build-not-native-acceptance
+          path: build/userscript
+  native:
+    name: Installed extension acceptance (explicit opt-in)
+    if: github.event_name == 'workflow_dispatch' && inputs.native_acceptance
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      RELEASE_COMMIT: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - name: Use the installed Playwright browser
+        run: |
+          node --input-type=module <<'JS'
+          import {appendFileSync} from 'node:fs';
+          import {chromium} from 'playwright';
+          appendFileSync(process.env.GITHUB_ENV, 'CHROMIUM_EXECUTABLE_PATH=' + chromium.executablePath() + '\n');
+          JS
+      - name: Native offscreen lookup acceptance
+        run: xvfb-run -a npm run test:offscreen-extension
+        env:
+          HEADED: '1'
+      - name: Installed MV3, toolbar and real public service probes
+        run: xvfb-run -a npm run test:extension
+        env:
+          HEADED: '1'
+          LIVE_SITES: '1'
+          LIVE_SERVICES: '1'
+      - name: Validate and package the native candidate
+        if: always()
+        run: npm run package
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: native-acceptance-evidence
+          path: |
+            test-results
+            build/packages
