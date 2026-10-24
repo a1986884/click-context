@@ -10,15 +10,18 @@ test('API text renders as text, never HTML',async()=>{const root=setup();const r
 
 async function allowOnline(reader){await reader.ready;}
 function pointer(target,type,props={}){const e=new window.Event(type,{bubbles:true,cancelable:true});Object.assign(e,{button:0,pointerId:1,clientX:20,clientY:20,...props});target.dispatchEvent(e);}
-test('main bubble stops lookup and translation together; settings translation stays independently controllable',async()=>{
+test('main bubble pauses both features, keeps paused settings and restores the chosen combination',async()=>{
  const root=setup();root.innerHTML='<p class="english" data-translation="海洋"><span data-word="ocean" tabindex="0">ocean</span></p>';
  const reader=mountReader({root,demo:true}),bubble=reader.shadow.querySelector('.bubble'),translation=reader.shadow.querySelector('#bilingual-enabled'),word=root.querySelector('span');
- await reader.ready;word.click();await tick();assert.equal(reader.shadow.querySelector('.dict').hidden,false);
- bubble.click();await tick();assert.equal(reader.preferences.words,false);assert.equal(bubble.getAttribute('aria-pressed'),'false');assert.equal(reader.shadow.querySelector('.dict').hidden,true);assert.equal(reader.enabled,false);
- translation.checked=!translation.checked;translation.dispatchEvent(new window.Event('change'));await tick();assert.ok(root.querySelector('.lextide-translation'));assert.equal(reader.preferences.words,false);word.click();await tick();assert.equal(reader.shadow.querySelector('.dict').hidden,true);
- bubble.click();await tick();assert.equal(reader.preferences.words,false);assert.equal(reader.enabled,false);assert.equal(root.querySelector('.lextide-translation'),null);bubble.click();await tick();assert.equal(reader.preferences.words,true);assert.equal(root.querySelector('.lextide-translation'),null);await reader.bilingual();word.click();await tick();assert.equal(reader.shadow.querySelector('.zh').textContent,'海洋');
- translation.checked=!translation.checked;translation.dispatchEvent(new window.Event('change'));await tick();assert.equal(root.querySelector('.lextide-translation'),null);assert.equal(reader.preferences.words,true);assert.equal(reader.shadow.querySelector('.dict').hidden,false);reader.destroy();
+ try{
+  await reader.ready;word.click();await tick();assert.equal(reader.shadow.querySelector('.dict').hidden,false);
+  bubble.click();await tick();assert.equal(reader.preferences.words,false);assert.equal(bubble.getAttribute('aria-pressed'),'false');assert.equal(reader.shadow.querySelector('.dict').hidden,true);assert.equal(reader.enabled,false);
+  translation.checked=true;translation.dispatchEvent(new window.Event('change'));await tick();assert.equal(root.querySelector('.lextide-translation'),null);assert.equal(reader.preferences.words,false);assert.equal(translation.checked,true);
+  bubble.click();await tick();assert.equal(reader.preferences.words,true);assert.equal(reader.enabled,true);assert.ok(root.querySelector('.lextide-translation'));word.click();await tick();assert.equal(reader.shadow.querySelector('.zh').textContent,'海洋');
+  translation.checked=false;translation.dispatchEvent(new window.Event('change'));await tick();assert.equal(root.querySelector('.lextide-translation'),null);assert.equal(reader.preferences.words,true);assert.equal(reader.shadow.querySelector('.dict').hidden,false);
+ }finally{reader.destroy();}
 });
+
 test('long press opens settings without toggling, including the following release click',async t=>{
  t.mock.timers.enable({apis:['setTimeout']});const root=setup();const reader=mountReader({root,demo:true});const bubble=reader.shadow.querySelector('.bubble');
  pointer(bubble,'pointerdown');t.mock.timers.tick(549);assert.equal(reader.shadow.querySelector('.panel').hidden,true);
@@ -47,7 +50,7 @@ test('main shutdown cancels pending translation and prevents late Chinese from r
  const reader=mountReader({root,demo:true,transport:async(type,text,online,options)=>{signal=options.signal;return await new Promise(resolve=>finish=resolve);}});await reader.ready;
  const translating=reader.bilingual();await tick();reader.shadow.querySelector('.bubble').click();await tick();assert.equal(reader.preferences.words,false);assert.equal(reader.enabled,false);assert.ok(signal.aborted);assert.equal(root.querySelector('.lextide-translation'),null);
  finish('迟到的中文译文');await translating;await tick();assert.equal(root.querySelector('.lextide-translation'),null);
- reader.shadow.querySelector('.bubble').click();await tick();assert.equal(reader.preferences.words,true);assert.equal(reader.enabled,false);reader.destroy();
+ reader.shadow.querySelector('.bubble').click();await tick();assert.equal(reader.preferences.words,true);assert.equal(reader.enabled,true);reader.shadow.querySelector('.bubble').click();await tick();assert.equal(reader.enabled,false);assert.ok(signal.aborted);reader.destroy();
 });
 
 test('dictionary failure does not block independent context and preserves its real source error',async()=>{
