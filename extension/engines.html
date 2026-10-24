@@ -1,0 +1,18 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>点击语境查词 · 翻译引擎</title><link rel="stylesheet" href="engines.css"></head><body><main>
+<header><p class="page-kicker">点击语境查词 / 阅读设置</p><h1>为两种阅读，选择合适的引擎。</h1><p>正文和选文分别选择；Collins 词典卡与 AI 语境释义保留。</p></header>
+<p id="status" role="status" aria-live="polite">正在读取…</p><p id="error" role="alert" hidden></p>
+<form id="settings"><fieldset id="controls" disabled>
+<section class="choices"><label for="body-engine">正文翻译引擎<select id="body-engine"></select></label><label for="selection-engine">选文翻译引擎<select id="selection-engine"></select></label></section>
+<section><p class="page-kicker">连接自己的服务</p><h2>我的 API 配置</h2><p>AI 聊天会员通常不含 API 额度。谷歌、微软和 DeepL 使用各自官方 API；自定义服务按所填地址发送文本，不自动切换其他服务。</p>
+<div class="toolbar"><label for="profile">配置<select id="profile"></select></label><button id="add" type="button">新增配置</button><button id="remove" type="button">移除配置</button></div>
+<div id="editor" hidden><label for="preset">服务<select id="preset"></select></label><label for="name">配置名称<input id="name" maxlength="64" autocomplete="off"></label>
+<label for="endpoint">API 地址<input id="endpoint" type="url" autocomplete="off" spellcheck="false" placeholder="https://example.com/v1/chat/completions"></label>
+<label id="model-label" for="model">模型 ID<input id="model" maxlength="160" autocomplete="off" spellcheck="false" placeholder="填写你账号中可用的模型 ID"></label>
+<label for="api-key">API 密钥<input id="api-key" type="password" autocomplete="off" spellcheck="false"></label><label class="check"><input id="clear-key" type="checkbox"> 清除此配置已保存的密钥</label>
+<label id="region-label" for="region">Microsoft 区域（资源要求时填写）<input id="region" maxlength="64" autocomplete="off" placeholder="例如 eastasia"></label>
+<label id="token-label" for="token-parameter">输出令牌参数<select id="token-parameter"><option value="max_tokens">max_tokens（多数兼容接口）</option><option value="max_completion_tokens">max_completion_tokens（OpenAI 新模型）</option></select></label>
+<p id="responses-note" hidden>Responses 使用完整 /v1/responses 地址，单次文本请求，不建立对话。仅支持该接口的模型请选此服务；模型 ID 仍需在账号中可用。</p>
+<p id="key-state"></p><button id="test" type="button">测试已保存配置</button><p id="test-result" role="status" aria-live="polite"></p></div>
+<p>密钥仅保存在本机扩展中，不同步、不回显，也不随生词本导出。此存储不是硬件加密保险箱。不要把密钥填入地址或配置名称。</p></section>
+<button id="save" type="submit">保存并授权服务主机</button><p>浏览器按主机授权，包含该主机的端口。只有使用所选引擎翻译，或主动点击测试，才会发送相应文本。</p>
+</fieldset></form></main><script type="module" src="engines.js"></script></body></html>

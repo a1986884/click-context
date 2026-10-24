@@ -1,0 +1,14 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>点击语境查词</title><link rel="stylesheet" href="popup.css"></head><body>
+<header><span class="brand-symbol" aria-hidden="true">↖</span><div><h1>点击语境查词</h1><small>点一下，看懂此处词义</small></div><span class="version"></span></header>
+<div class="site-card"><p class="section-label">当前网页</p><p id="site">正在读取网站…</p><p id="status" role="status" aria-live="polite">正在连接…</p><p id="error" role="alert" hidden></p>
+</div><fieldset id="controls" class="control-card" disabled>
+<label class="switch"><span>点击查词<small>在当前标签页开启</small></span><input id="enabled" type="checkbox"></label>
+<label><input id="remember" type="checkbox"> 启用时记住此网站（需浏览器授权）</label>
+<div id="reading"><p class="section-label">辅助阅读</p><label for="mode">阅读模式</label><select id="mode"><option value="original">原文</option><option value="bilingual">双语</option><option value="translated">译文</option></select>
+<label><input id="words" type="checkbox"> 查词（开启时链接不跳转）</label>
+<small id="engine-summary">查词读取有道 Collins 双解，所点原句由 Cloudflare AI 分析此处含义；正文与选文可分别选择翻译引擎。</small>
+<button id="settings">阅读设置 ↗</button></div>
+<details><summary>网站与隐私</summary><p id="authorization"></p><button id="revoke">取消此网站授权</button><label><input id="excluded" type="checkbox"> 排除此网站</label></details>
+</fieldset><label><input id="paused" type="checkbox"> 暂停所有网站</label>
+<div class="quick-actions"><button id="vocabulary" class="primary">我的生词本 ↗</button><button id="engines">翻译引擎 / 我的 API ↗</button></div><small>收藏仅保存在此浏览器。临时授权在浏览器关闭后失效；敏感路径需逐页主动启用。</small><script type="module" src="popup.js"></script></body></html>
+

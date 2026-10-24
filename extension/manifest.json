@@ -1,0 +1,46 @@
+{
+  "manifest_version": 3,
+  "name": "点击语境查词",
+  "version": "0.7.98",
+  "minimum_chrome_version": "130",
+  "description": "点击英文单词，结合当前原句查看此处含义；支持划词翻译、网页双语阅读和本地生词收藏。按网站启用。",
+  "permissions": [
+    "storage",
+    "activeTab",
+    "scripting",
+    "offscreen"
+  ],
+  "optional_host_permissions": [
+    "http://*/*",
+    "https://*/*"
+  ],
+  "host_permissions": [
+    "https://dict.youdao.com/*",
+    "https://lextide-context.aa1986884.workers.dev/*"
+  ],
+  "icons": {
+    "16": "assets/icon16.png",
+    "32": "assets/icon32.png",
+    "48": "assets/icon48.png",
+    "128": "assets/icon128.png"
+  },
+  "action": {
+    "default_title": "点击语境查词 · 点一下，看懂此处词义",
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "assets/icon16.png",
+      "32": "assets/icon32.png"
+    }
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'none'; base-uri 'none'"
+  },
+  "options_ui": {
+    "page": "engines.html",
+    "open_in_tab": true
+  }
+}

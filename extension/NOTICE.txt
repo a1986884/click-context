@@ -1,0 +1,13 @@
+Lextide · 词汐
+
+Paragraph translations are provided by Cloudflare Workers AI and labeled as machine translation.
+Dictionary lookups read limited excerpts from the requested public Collins
+English–Chinese section hosted by Youdao, with links to the requested source.
+Collins dictionary content remains copyright HarperCollins Publishers.
+No full dictionary corpus or API credentials are bundled.
+The original demonstration articles/glossary are identified as CC0-1.0 examples;
+they are not used as fallback Collins definitions in the extension.
+
+Chromium dictionary HTML is parsed with native DOMParser in an offscreen page.
+No third-party HTML parser is bundled in the Chromium extension.
+The project source code is licensed under the MIT License; see LICENSE in the repository root.
