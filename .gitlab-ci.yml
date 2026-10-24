@@ -1,0 +1,80 @@
+stages: [verify, browser, native]
+
+workflow:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS'
+      when: never
+    - if: '$CI_COMMIT_BRANCH'
+
+default:
+  interruptible: true
+  timeout: 15m
+
+variables:
+  RELEASE_COMMIT: "$CI_COMMIT_SHA"
+  GIT_DEPTH: "0"
+
+verify:
+  image: node:22-bookworm
+  stage: verify
+  script:
+    - npm ci --ignore-scripts
+    - npm run check
+    - npm run audit:source
+    - npm run audit:history
+    - npm test
+    - npm run build
+    - npm run package
+  artifacts:
+    when: always
+    access: developer
+    expire_in: 30 days
+    paths:
+      - build/packages/
+      - dist/
+      - test-results/history-audit.json
+
+ordinary-browser:
+  image: mcr.microsoft.com/playwright:v1.62.1-noble
+  stage: browser
+  needs: [verify]
+  script:
+    - npm ci --ignore-scripts
+    - npm run test:browser
+    - npm run build:preview
+    - npm run test:preview
+    - npm run package
+  artifacts:
+    when: always
+    access: developer
+    expire_in: 30 days
+    paths:
+      - test-results/
+      - build/packages/
+
+# Explicitly requested only in an environment whose policy permits installation.
+# A green ordinary pipeline does not mean this optional acceptance ran or passed.
+native-extension-acceptance:
+  image: mcr.microsoft.com/playwright:v1.62.1-noble
+  stage: native
+  needs: [ordinary-browser]
+  rules:
+    - if: '$RUN_NATIVE_EXTENSION_ACCEPTANCE == "1"'
+      when: manual
+      allow_failure: false
+    - when: never
+  script:
+    - npm ci --ignore-scripts
+    - npm run build
+    - HEADED=1 xvfb-run -a npm run test:offscreen-extension
+    - HEADED=1 LIVE_COLLINS=1 xvfb-run -a npm run test:extension
+  after_script:
+    - npm run package
+  artifacts:
+    when: always
+    access: developer
+    expire_in: 30 days
+    paths:
+      - test-results/
+      - build/packages/

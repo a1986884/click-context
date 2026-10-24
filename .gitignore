@@ -1,0 +1,17 @@
+node_modules/
+*.pem
+*.key
+.env.*
+.dev.vars*
+build/
+dist/
+*.zip
+.env*
+!.env.example
+.openai/*.tar.gz
+
+node_modules
+test-results/
+
+__pycache__/
+*.pyc
