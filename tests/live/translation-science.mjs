@@ -1,0 +1,9 @@
+import {scienceCases,assertScientificTranslation} from './science-cases.mjs';
+// Explicit finite provider acceptance with original public-safe text.
+import {chromium} from 'playwright';import {mkdir,writeFile} from 'node:fs/promises';import assert from 'node:assert/strict';
+import {previewExpectation,verifyPublishedPreview} from './preview-evidence.mjs';import {collectTranslationSamples} from './translation-probe.mjs';
+const cases=scienceCases,validate=assertScientificTranslation;
+await mkdir('test-results',{recursive:true});const report={startedAt:new Date().toISOString(),status:'failed',kind:'finite scientific roles and negation from published origin; requires manual review',nativeExtensionInstalled:false,reviewRequired:true,activePhase:'browser-launch',samples:[],caseDefinitions:cases.map(({id,text})=>({id,text}))};let browser;
+try{Object.assign(report,await previewExpectation());browser=await chromium.launch({executablePath:process.env.CHROMIUM_EXECUTABLE_PATH||'/usr/bin/chromium'});const page=await browser.newPage();await page.goto(process.env.PREVIEW_URL||'https://v04-preview.lextide.pages.dev/');await verifyPublishedPreview(page,report);report.activePhase='scientific-samples';await collectTranslationSamples(page,report,{samples:cases.map(item=>item.text),validate});for(const [i,sample]of report.samples.entries())sample.id=cases[i].id;assert.equal(report.failureCount,0,'Scientific sample failures are retained: '+report.failureCount);report.status='passed';report.activePhase='complete';console.log(JSON.stringify({status:report.status,samples:report.samples.length,nativeExtensionInstalled:false}));}
+catch(error){report.error=error.stack;throw error;}
+finally{try{await browser?.close();}catch(error){report.cleanupError=error.message;report.status='failed';process.exitCode=1;}report.finishedAt=new Date().toISOString();await writeFile('test-results/live-translation-science.json',JSON.stringify(report,null,2));}
