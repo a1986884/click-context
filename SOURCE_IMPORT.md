@@ -22,3 +22,16 @@ The CI workflow is uploaded last, after all source files, to avoid running again
 The initial run [40090285863](https://github.com/a1986884/click-context/actions/runs/40090285863), commit `14c553df5cac6ee4791c88b5fda03938dbd9374e`, completed with 805 passing tests and one test cancelled because the Node event loop exited while waiting for an unreferenced AbortSignal.timeout timer.
 
 Only `tests/context-worker-cancellation.test.mjs` is adjusted: a referenced keepalive timer is cleared by the test cleanup. Existing timeout, cancellation, status, call-count and late-rejection assertions remain unchanged. Runtime/backend/model code is unchanged. Original test bytes and original source history remain in the bundle. Later CI results must be read from their own run, not inferred from this correction.
+
+## 0.7.132 当前源码上传
+
+本次更新保留已有远端提交与独立诊断分支，不强制推送。由于连接器写操作返回 integration 403，使用已登录 GitHub 网页按目录提交；GitHub 上的网页提交与本地开发提交 SHA 不同。当前本地开发分支及其完整可达历史另存为根目录 `click-context-0.7.132-local-history.bundle`，原 0.7.129 历史包也继续保留。
+
+恢复本地开发提交：
+
+```sh
+git bundle verify click-context-0.7.132-local-history.bundle
+git fetch ./click-context-0.7.132-local-history.bundle refs/heads/fix-reader-toggle-state:refs/heads/recovered-0.7.132
+```
+
+源码上传不等于稳定发布，公开安装页未更新；验证边界以 README 与 docs/diagnostics 记录为准。
