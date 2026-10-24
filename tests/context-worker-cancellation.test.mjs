@@ -18,6 +18,9 @@ test('cancelling running context inference returns without retry even if the bin
  lateReject(Error('Synthetic late binding rejection'));await tick();
 });
 test('the server bounds context inference wait and consumes a late binding failure',{timeout:1000},async t=>{
+ // AbortSignal.timeout uses an unreferenced timer in Node. Keep this test alive
+ // while exercising the real timeout signal; a pending Promise alone cannot.
+ const keepAlive=setInterval(()=>{},1000);t.after(()=>clearInterval(keepAlive));
  const timeout=AbortSignal.timeout.bind(AbortSignal),deadlines=[];t.mock.method(AbortSignal,'timeout',ms=>{deadlines.push(ms);return timeout(8);});
  let calls=0,seen,lateReject;
  const response=await worker.fetch(request(),environment((_model,_input,options)=>{calls++;seen=options?.signal;return new Promise((_resolve,reject)=>lateReject=reject);}));
