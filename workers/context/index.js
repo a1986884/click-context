@@ -1,0 +1,67 @@
+import {cleanTranslation,translationPrompt,translationModel,translationOutputLimit,parseTranslationResult,TRANSLATION_MODEL,TRANSLATION_CURRENT_MODEL,TRANSLATION_CACHE_VERSION,TRANSLATION_LEGACY_CACHE_VERSION,TRANSLATION_ACCEPTED_CACHE_VERSIONS,TRANSLATION_VALIDATION_REASONS,TRANSLATION_INCOMPLETE_REASONS} from '../../src/translation-service.js';
+import {cleanContext,contextPrompt,parseContextResult,CONTEXT_MODEL,CONTEXT_VALIDATION_REASONS,CONTEXT_CURRENT_REVISION} from '../../src/context-meaning.js';
+const CONTEXT_INFERENCE_TIMEOUT_MS=16000;
+const TRANSLATION_INFERENCE_TIMEOUT_MS=16000;
+const TRANSLATION_FAILURE_REASONS=['cancelled','timeout','inference','invalid-result','capacity'];
+function capacityError(error){return error?.code===3040||error?.code==='3040'||Array.isArray(error?.errors)&&error.errors.some(item=>item?.code===3040)||typeof error?.message==='string'&&error.message.includes('3040: Capacity temporarily exceeded');}
+function inference(run,signal){
+ return new Promise((resolve,reject)=>{
+  const abort=()=>{signal.removeEventListener('abort',abort);reject(signal.reason||Error('已取消'));};
+  if(signal.aborted){abort();return;}signal.addEventListener('abort',abort,{once:true});
+  Promise.resolve().then(()=>{signal.throwIfAborted();return run();}).then(value=>{signal.removeEventListener('abort',abort);resolve(value);},error=>{signal.removeEventListener('abort',abort);reject(error);});
+ });
+}
+function contextErrorBody(code,validationReason){
+ const messages={CONTEXT_BUSY:'语境服务繁忙，请稍后重试',RATE_LIMITED:'语境查询过于频繁，请稍后重试',CONTEXT_CANCELLED:'语境请求已取消',CONTEXT_TIMEOUT:'语境分析超时，请重试',CONTEXT_INVALID_RESULT:'语境结果未通过校验，请重试',CONTEXT_UNAVAILABLE:'语境服务暂不可用，请重试'};
+ return {ok:false,error:messages[code],code,retryable:false,...(code==='CONTEXT_INVALID_RESULT'?{validationReason:CONTEXT_VALIDATION_REASONS.includes(validationReason)?validationReason:'unknown'}:{})};
+}
+export default {async fetch(request,env){
+ const path=new URL(request.url).pathname,userscript=path==='/userscript/meaning'||path==='/userscript/translate';
+ // Dedicated anonymous public API for user-installed scripts on arbitrary sites.
+ // Existing extension routes keep their origin policy; quotas/schema/timeouts are shared.
+ const origin=request.headers.get('Origin')||'';
+ const allowed=userscript||!origin||/^chrome-extension:\/\/[a-p]{32}$/.test(origin)||origin==='https://v04-preview.lextide.pages.dev'||/^https:\/\/[a-f0-9]+\.lextide\.pages\.dev$/.test(origin);
+ const headers={'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Vary':'Origin',...(allowed&&(origin||userscript)?{'Access-Control-Allow-Origin':userscript?'*':origin,'Access-Control-Allow-Headers':'Content-Type','Access-Control-Allow-Methods':'POST, OPTIONS'}:{})};
+ const reply=(body,status=200)=>Response.json(body,{status,headers});
+ if(!allowed)return reply({ok:false,error:'来源不受支持'},403);
+ if(new URL(request.url).pathname==='/health')return reply({ok:true,model:CONTEXT_MODEL,version:'ai-context-v3',currentContextRevision:CONTEXT_CURRENT_REVISION,acceptedContextRevisions:['ai-context-v3',CONTEXT_CURRENT_REVISION],contextInferenceTimeoutMs:CONTEXT_INFERENCE_TIMEOUT_MS,contextFailureCodes:true,contextValidationReasons:CONTEXT_VALIDATION_REASONS,translation:{model:TRANSLATION_MODEL,currentModel:TRANSLATION_CURRENT_MODEL,version:'ai-translation-v1',cacheVersion:TRANSLATION_CACHE_VERSION,defaultCacheVersion:TRANSLATION_LEGACY_CACHE_VERSION,acceptedCacheVersions:TRANSLATION_ACCEPTED_CACHE_VERSIONS,inferenceTimeoutMs:TRANSLATION_INFERENCE_TIMEOUT_MS,failureReasons:TRANSLATION_FAILURE_REASONS,validationReasons:TRANSLATION_VALIDATION_REASONS,incompleteReasons:TRANSLATION_INCOMPLETE_REASONS}});
+ const translating=path==='/translate'||path==='/userscript/translate';
+ if(!translating&&path!=='/meaning'&&path!=='/userscript/meaning')return reply({ok:false,error:'Not found'},404);
+ if(request.method==='OPTIONS')return new Response(null,{status:204,headers});
+ if(request.method!=='POST')return reply({ok:false,error:'只接受 POST'},405);
+ if(!request.headers.get('Content-Type')?.includes('application/json'))return reply({ok:false,error:'需要 JSON'},415);
+ if(Number(request.headers.get('Content-Length'))>65000)return reply({ok:false,error:'请求过长'},413);
+ // Bound actual bytes even when Content-Length is absent or dishonest.
+ const reader=request.body?.getReader();if(!reader)return reply({ok:false,error:'请求为空'},400);
+ let text='',size=0;const decoder=new TextDecoder();try{while(true){const {done,value}=await reader.read();if(done)break;size+=value.byteLength;if(size>65000){await reader.cancel();return reply({ok:false,error:'请求过长'},413);}text+=decoder.decode(value,{stream:true});}text+=decoder.decode();}catch{return reply({ok:false,error:'请求读取失败'},400);}
+ let input;try{input=translating?cleanTranslation(JSON.parse(text)):cleanContext(JSON.parse(text));}catch{return reply({ok:false,error:translating?'无效翻译请求':'无效语境请求'},400);}
+ const ip=request.headers.get('CF-Connecting-IP')||'unknown';
+ if(translating){
+  if(!(await env.TRANSLATION_IP.limit({key:ip})).success||!(await env.TRANSLATION_TOTAL.limit({key:'all'})).success)return reply({ok:false,error:'正文翻译请求过于频繁，请稍后重试',code:'RATE_LIMITED',retryable:false},429);
+  const signal=AbortSignal.any([request.signal,AbortSignal.timeout(TRANSLATION_INFERENCE_TIMEOUT_MS)]),started=Date.now();
+  for(let attempt=0;attempt<2;attempt++){
+   let validating=false;
+   try{const raw=await inference(()=>env.AI.run(translationModel(input),translationPrompt(input),{signal,...(input.translationRevision===TRANSLATION_CACHE_VERSION?{rejectIfBusy:true}:{})}),signal);signal.throwIfAborted();validating=true;return reply({ok:true,data:parseTranslationResult(raw,input)});}
+   catch(error){
+    if(!validating&&!signal.aborted&&input.translationRevision===TRANSLATION_CACHE_VERSION&&capacityError(error))return reply({ok:false,error:'内置翻译服务繁忙，请稍后重试',code:'TRANSLATION_BUSY',failureReason:'capacity',translationRevision:input.translationRevision,outputTokenLimit:translationOutputLimit(input),retryable:false},503);
+    if(attempt===1||signal.aborted||Date.now()-started>5000){
+    const failureReason=request.signal.aborted?'cancelled':signal.aborted?'timeout':validating?'invalid-result':'inference';
+    const validationReason=failureReason==='invalid-result'&&TRANSLATION_VALIDATION_REASONS.includes(error?.validationReason)?error.validationReason:'unknown';
+    const incompleteReason=validationReason==='incomplete'&&TRANSLATION_INCOMPLETE_REASONS.includes(error?.incompleteReason)?error.incompleteReason:'unknown';
+    return reply({ok:false,error:validationReason==='condition-mismatch'?'译文未通过条件方向校验，请更换引擎或重试':'正文翻译暂不可用，请稍后重试',code:'TRANSLATION_UNAVAILABLE',failureReason,translationRevision:input.translationRevision,outputTokenLimit:translationOutputLimit(input),...(failureReason==='invalid-result'?{validationReason}:{}),...(failureReason==='invalid-result'&&validationReason==='incomplete'?{incompleteReason}:{}),retryable:false},503);
+   }}
+  }
+ }
+ if(!(await env.PER_IP.limit({key:ip})).success||!(await env.TOTAL.limit({key:'all'})).success)return reply(contextErrorBody('RATE_LIMITED'),429);
+ const signal=AbortSignal.any([request.signal,AbortSignal.timeout(CONTEXT_INFERENCE_TIMEOUT_MS)]),started=Date.now();
+ for(let attempt=0;attempt<2;attempt++){
+  let validating=false;
+  try{const raw=await inference(()=>env.AI.run(CONTEXT_MODEL,contextPrompt(input),{signal,...(input.contextRevision===CONTEXT_CURRENT_REVISION?{rejectIfBusy:true}:{})}),signal);signal.throwIfAborted();validating=true;return reply({ok:true,data:parseContextResult(raw,input)});}
+  catch(error){
+   if(!validating&&!signal.aborted&&input.contextRevision===CONTEXT_CURRENT_REVISION&&capacityError(error))return reply(contextErrorBody('CONTEXT_BUSY'),503);
+   if(attempt===1||signal.aborted||Date.now()-started>7000){
+   const code=request.signal.aborted?'CONTEXT_CANCELLED':signal.aborted?'CONTEXT_TIMEOUT':validating?'CONTEXT_INVALID_RESULT':'CONTEXT_UNAVAILABLE';
+   return reply(contextErrorBody(code,error?.validationReason),503);
+  }}
+ }
+}};
