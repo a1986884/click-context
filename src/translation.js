@@ -166,7 +166,7 @@ export class ParagraphTranslator{
     }),requestSignal);}catch{if(this.current(r,requestSignal))this.report('缓存无法保存，译文仍可阅读');}
    }catch(e){
     if(!requestSignal.aborted)this.flushChanges();
-    if(!this.current(r,requestSignal)){if(!requestSignal.aborted)this.refresh([this.root],false);continue;}r.state='error';const node=this.node(r);node.textContent='翻译失败：'+e.message;const retry=document.createElement('button');retry.textContent=r.sentence?'重试此句':'重试此段';retry.style.cssText='display:block;min-height:44px';retry.onclick=()=>void this.retry(r);node.append(retry);if(['RATE_LIMITED','TRANSLATION_UNAVAILABLE','ENGINE_AUTH','ENGINE_CONFIG','ENGINE_CHANGED'].includes(e.code)){this.rateLimited=true;this.pauseReason=e.code==='RATE_LIMITED'?'rate':'service';break;}
+    if(!this.current(r,requestSignal)){if(!requestSignal.aborted)this.refresh([this.root],false);continue;}r.state='error';const node=this.node(r);node.textContent='翻译失败：'+e.message;const retry=document.createElement('button');retry.textContent=r.sentence?'重试此句':'重试此段';retry.style.cssText='display:block;min-height:44px';retry.onclick=()=>void this.retry(r);node.append(retry);if(['RATE_LIMITED','TRANSLATION_UNAVAILABLE','TRANSLATION_BUSY','TRANSLATION_QUOTA_EXCEEDED','ENGINE_AUTH','ENGINE_CONFIG','ENGINE_CHANGED'].includes(e.code)){this.rateLimited=true;this.pauseReason=e.code==='RATE_LIMITED'?'rate':'service';break;}
    }
    if(!signal.aborted)this.summary();
   }}finally{if(this.controller===session){this.pumping=false;if(!signal.aborted)this.summary();}}
