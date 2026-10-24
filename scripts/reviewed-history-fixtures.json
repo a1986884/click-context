@@ -1,0 +1,16 @@
+[
+  {
+    "object": "cf1393e3aa9882dd97dd6f5c9572f518bcc21132",
+    "paths": [
+      "tests/cloud-qa.test.mjs"
+    ],
+    "reason": "Verified synthetic QA_TOKEN in the local fake Worker/KV unit fixture, not a deployed credential. Replaced by an explicit EXAMPLE placeholder in 0.7.83. Review applies only to this complete Git blob and path set; no future version or whole file is exempt."
+  },
+  {
+    "object": "2b82a18d7e1990a396ecf1efe40c4edf7d7e45e1",
+    "paths": [
+      "tests/browser/userscript-panel-switching.mjs"
+    ],
+    "reason": "Verified SYNTHETIC_PANEL_TEST_KEY in the original ordinary-browser GM mock: requests are recorded locally and never sent to a vendor. Replaced with explicit EXAMPLE placeholder in 0.7.114. Review applies only to this complete Git blob and exact path set; no future file content or credential pattern is exempt."
+  }
+]
