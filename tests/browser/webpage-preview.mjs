@@ -1,0 +1,31 @@
+import {TRANSLATION_CACHE_VERSION} from '../../src/translation-service.js';
+import {createServer} from 'node:http';
+import {chromium} from 'playwright';
+import {writeFile,mkdir,readFile} from 'node:fs/promises';
+import {fileURLToPath} from 'node:url';
+import {sourceState} from '../../scripts/build-evidence.mjs';
+import assert from 'node:assert/strict';
+import worker from '../../build/pages-preview/_worker.js';
+const pkg=JSON.parse(await readFile(new URL('../../package.json',import.meta.url)));
+const server=createServer(async(req,res)=>{try{const r=await worker.fetch(new Request('http://localhost'+req.url));res.writeHead(r.status,Object.fromEntries(r.headers));res.end(Buffer.from(await r.arrayBuffer()));}catch{res.writeHead(500);res.end();}}).listen(0,'127.0.0.1');await new Promise(r=>server.on('listening',r));
+const base=process.env.PREVIEW_URL||'http://127.0.0.1:'+server.address().port;
+const browser=await chromium.launch({executablePath:process.env.CHROMIUM_EXECUTABLE_PATH||'/usr/bin/chromium'});
+const report={version:pkg.version,source:sourceState({cwd:fileURLToPath(new URL('../..',import.meta.url))}),translationRevision:TRANSLATION_CACHE_VERSION,startedAt:new Date().toISOString(),kind:'webpage preview with synthetic provider responses',nativeExtensionInstalled:false,url:base+'/webpage.html',status:'failed'};
+await mkdir('test-results',{recursive:true});
+try{
+ const page=await browser.newPage({viewport:{width:1100,height:900}}),queries=[],errors=[];page.setDefaultTimeout(20000);page.on('pageerror',e=>errors.push(e.message));
+ await page.route('https://lextide-context.aa1986884.workers.dev/translate',route=>{queries.push(route.request().postDataJSON().text);return route.fulfill({json:{ok:true,data:{text:'网页翻译测试响应',version:TRANSLATION_CACHE_VERSION}}});});
+ await page.goto(report.url);report.preview=await page.evaluate(async()=>{const r=await fetch('/version.json');return r.json();});assert.equal(report.preview.version,pkg.version);assert.deepEqual(queries,[]);assert.equal(await page.locator('#bilingual-toggle').count(),0);
+ await page.evaluate(()=>{globalThis.__originalLink=document.querySelector('#notes a');globalThis.__originalCell=document.querySelector('td');});
+ await page.locator('#settings').click();await page.locator('lextide-reader #bilingual-enabled').check();await page.locator('lextide-reader .panel .close').click();await page.locator('#opening').scrollIntoViewIfNeeded();
+ await page.locator('.lextide-translation p').first().waitFor();assert.equal(await page.locator('.lextide-translation small').count(),0);assert.equal(await page.evaluate(()=>document.querySelector('#opening').hasAttribute('data-translation')),false);
+ await page.locator('#settings').click();await page.locator('lextide-reader #translation-unit').selectOption('sentence');await page.locator('lextide-reader .panel .close').click();await page.locator('#opening').scrollIntoViewIfNeeded();
+ await page.waitForFunction(()=>document.querySelectorAll('#opening > [data-translation-unit=sentence] .lextide-translation-text').length===2);assert.ok(queries.some(t=>t==='Learning a language changes the way we notice the world.'));
+ await page.locator('#settings').click();await page.locator('lextide-reader #translation-unit').selectOption('paragraph');await page.locator('lextide-reader .panel .close').click();await page.waitForFunction(()=>!document.querySelector('[data-translation-unit=sentence]'));
+ await page.locator('#load-more').click();await page.locator('#next-page p').first().scrollIntoViewIfNeeded();await page.locator('#next-page .lextide-translation-text').waitFor().catch(async error=>{console.error(JSON.stringify({queries,status:await page.locator('lextide-reader #status').textContent(),errors}));throw error;});assert.ok(queries.some(t=>t.startsWith('Reading is a conversation')));
+ await page.setViewportSize({width:390,height:844});await page.locator('#next-page').scrollIntoViewIfNeeded();await page.screenshot({path:'test-results/webpage-preview-mobile.png'});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
+ await page.locator('lextide-reader .bubble').click({delay:620});await page.locator('lextide-reader #bilingual-enabled').uncheck();await page.waitForFunction(()=>!document.querySelector('.lextide-translation'));
+ let failedRequests=0;await page.unroute('https://lextide-context.aa1986884.workers.dev/translate');await page.route('https://lextide-context.aa1986884.workers.dev/translate',route=>{failedRequests++;return route.fulfill({status:503,json:{ok:false,error:'测试服务暂不可用',code:'TRANSLATION_UNAVAILABLE',retryable:false}});});
+ await page.locator('#settings').click();await page.locator('lextide-reader #clear-cache').click();await page.locator('lextide-reader #status').filter({hasText:'已清除翻译缓存'}).waitFor();await page.locator('lextide-reader #bilingual-enabled').check();await page.waitForFunction(()=>document.querySelector('lextide-reader').shadowRoot.querySelector('#status').textContent.includes('服务暂不可用，后续翻译已暂停'));assert.equal(failedRequests,1);assert.equal(await page.locator('.lextide-translation').count(),1);await page.locator('lextide-reader .bubble').click();await page.waitForFunction(()=>!document.querySelector('.lextide-translation'));
+ assert.equal(await page.evaluate(()=>__originalCell===document.querySelector('td')&&__originalLink===document.querySelector('#notes a')),true);assert.deepEqual(errors,[]);report.status='passed';report.requests=queries.length;report.checks=['no translation until enabled in settings','real provider route required; no bundled Chinese','no paragraph source labels','sentence choice inserts Chinese after each source sentence; switching back clears sentence layout','newly loaded paragraph translated','390px layout fits','switch off removes translations and preserves original links/cells','upstream outage pauses after one failed request and master OFF clears its error'];
+}finally{report.finishedAt=new Date().toISOString();await browser.close();await new Promise(r=>server.close(r));await writeFile('test-results/webpage-preview-report.json',JSON.stringify(report,null,2));console.log(JSON.stringify(report));}

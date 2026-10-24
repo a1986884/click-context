@@ -1,0 +1,20 @@
+// Protect actual browser localStorage without editing any user profile/data.
+import {chromium} from 'playwright';import {build} from 'esbuild';import assert from 'node:assert/strict';import {createServer} from 'node:http';import {mkdir,writeFile} from 'node:fs/promises';
+const bundle=await build({stdin:{resolveDir:process.cwd(),contents:`import {mountReader} from './src/reader.js';import {demoStore} from './src/storage.js';globalThis.__store=demoStore();globalThis.__reader=mountReader({root:document.querySelector('main'),store:__store,transport:async(_type,word)=>({word,lemma:word,zh:'银行测试',kind:'collins',source:'Synthetic integrity fixture'})});`},bundle:true,format:'iife',write:false});
+const server=createServer((_req,res)=>{res.writeHead(200,{'Content-Type':'text/html'});res.end('<main><p id="word">bank</p></main>');}).listen(0,'127.0.0.1');await new Promise(r=>server.on('listening',r));
+await mkdir('test-results',{recursive:true});const report={kind:'malformed vocabulary preservation and recovery',nativeExtensionInstalled:false,status:'failed',checks:[]};let browser;
+try{
+ browser=await chromium.launch({executablePath:process.env.CHROMIUM_EXECUTABLE_PATH||'/usr/bin/chromium'});
+ for(const width of [1000,390]){
+  const context=await browser.newContext({viewport:{width,height:844}}),page=await context.newPage(),errors=[],downloads=[];page.on('pageerror',e=>errors.push(e.message));page.on('download',d=>downloads.push(d));
+  await page.goto('http://127.0.0.1:'+server.address().port);const broken='{"preserve-this-test-data":';await page.evaluate(broken=>localStorage.setItem('lextide:v2:words',broken),broken);await page.evaluate(bundle.outputFiles[0].text);await page.evaluate(async()=>{await __reader.ready;await __reader.show('bank',document.querySelector('#word'));});
+  assert.equal(await page.locator('lextide-reader .zh').textContent(),'银行测试');await page.locator('lextide-reader #save').click();await page.locator('lextide-reader .sense-status').filter({hasText:'已有生词数据无法读取'}).waitFor();assert.equal(await page.evaluate(()=>localStorage.getItem('lextide:v2:words')),broken);
+  await page.evaluate(()=>__reader.openVocabulary());await page.locator('lextide-reader #vocab-status').filter({hasText:'生词本读取失败'}).waitFor();await page.locator('lextide-reader #export').click();await page.locator('lextide-reader #vocab-status').filter({hasText:'导出失败'}).waitFor();assert.equal(downloads.length,0,'An unreadable vocabulary must not export a misleading empty backup');
+  await page.locator('lextide-reader #import-words').setInputFiles({name:'safe.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify({version:2,words:[{word:'river',zh:'河流'}]}))});await page.locator('lextide-reader #vocab-status').filter({hasText:'导入失败'}).waitFor();assert.equal(await page.evaluate(()=>localStorage.getItem('lextide:v2:words')),broken);
+  assert.equal(await page.evaluate(async()=>{try{await __store.removeWord('bank');return 'unexpected-success';}catch(e){return e.code;}}),'VOCABULARY_READ_FAILED');assert.equal(await page.evaluate(()=>localStorage.getItem('lextide:v2:words')),broken);
+  // The test repairs only its own fixture. Product never rewrites corrupted data.
+  await page.evaluate(()=>localStorage.setItem('lextide:v2:words',JSON.stringify([{word:'ocean',lemma:'ocean',zh:'保留收藏',sentence:''}])));await page.keyboard.press('Escape');await page.evaluate(()=>__reader.show('bank',document.querySelector('#word')));await page.locator('lextide-reader #save').click();await page.locator('lextide-reader #save').filter({hasText:'已收藏'}).waitFor();assert.deepEqual((await page.evaluate(()=>__store.words())).map(w=>w.lemma).sort(),['bank','ocean']);assert.deepEqual(errors,[]);
+  report.checks.push({width,rawBytesPreserved:true,emptyExportBlocked:true,lookupUnaffected:true,readRecovery:true});await context.close();
+ }
+ report.status='passed';console.log(JSON.stringify(report));
+}catch(error){report.error=error.stack;throw error;}finally{await browser?.close();await new Promise(r=>server.close(r));await writeFile('test-results/storage-integrity-report.json',JSON.stringify(report,null,2));}

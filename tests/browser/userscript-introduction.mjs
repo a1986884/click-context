@@ -1,0 +1,23 @@
+import {chromium} from 'playwright';import {readFile,writeFile,mkdir} from 'node:fs/promises';import {createHash} from 'node:crypto';import assert from 'node:assert/strict';import {USERSCRIPT_VERSION} from '../../userscript/version.js';
+const code=await readFile(process.env.USERSCRIPT_TEST_FILE||'build/userscript/click-context.user.js','utf8'),version=code.match(/@version\s+(\S+)/)?.[1];if(!process.env.USERSCRIPT_TEST_FILE)assert.equal(version,USERSCRIPT_VERSION);
+const report={version,scriptSHA256:createHash('sha256').update(code).digest('hex'),kind:'ordinary Chromium; generated script; synthetic legacy/modern GM introduction flag failures',status:'failed',tampermonkeyInstalled:false,iPhoneTested:false,checks:[]};
+const html='<div id="authTrans"><h3>柯林斯英汉双解大词典</h3><div id="collinsResult"><h4><span class="title">class</span></h4><ul><li><div class="collinsMajorTrans"><p><span class="additional">N-COUNT</span> A course of teaching in a subject. 课程</p></div></li></ul></div></div>';
+await mkdir('test-results',{recursive:true});const browser=await chromium.launch({executablePath:process.env.CHROMIUM_EXECUTABLE_PATH||'/usr/bin/chromium'});
+try{for(const manager of ['legacy','modern'])for(const failure of ['read','write']){
+ const page=await browser.newPage({viewport:{width:390,height:844}}),errors=[],check={manager,failure,status:'failed'};page.on('pageerror',e=>errors.push(e.message));
+ try{
+ await page.route('https://course.example/**',r=>r.fulfill({contentType:'text/html',body:'<meta name="viewport" content="width=device-width,initial-scale=1"><main><p>This <b id="word">class</b> is taught here.</p></main>'}));await page.goto('https://course.example/');
+ await page.evaluate(({manager,failure,html})=>{window.__values={};window.__menus={};window.__alerts=[];window.__failure=false;window.__calls=[];window.__aborts=0;window.__recover=false;window.alert=message=>__alerts.push(message);
+ const fail=()=>{__failure=true;if(manager==='legacy')throw Error('SYNTHETIC_INTRO_STORAGE_FAILURE');return Promise.reject(Error('SYNTHETIC_INTRO_STORAGE_FAILURE'));};
+ const getValue=(k,d)=>k==='click-context:v1:introduced'&&failure==='read'?fail():__values[k]??d;
+ const setValue=(k,v)=>{if(k==='click-context:v1:introduced'&&failure==='write')return fail();__values[k]=structuredClone(v);};
+ const registerMenuCommand=(name,fn)=>__menus[name]=fn;
+ const xmlHttpRequest=d=>{__calls.push(d.url);if(__recover)queueMicrotask(()=>d.onload({status:200,response:d.url.includes('dict.youdao.com')?html:JSON.stringify({ok:true,data:{senseId:null,zh:'课程'}})}));return {abort(){__aborts++;d.onabort();}};};
+ if(manager==='legacy')Object.assign(window,{GM_getValue:getValue,GM_setValue:setValue,GM_registerMenuCommand:registerMenuCommand,GM_xmlhttpRequest:xmlHttpRequest});else window.GM={getValue,setValue,registerMenuCommand,xmlHttpRequest};
+ },{manager,failure,html});
+ await page.evaluate(code);await page.waitForFunction(()=>__failure&&Object.keys(__menus).length===4);await page.evaluate(async()=>{for(let i=0;i<8;i++)await Promise.resolve();});
+ assert.deepEqual(await page.evaluate(()=>__alerts),[],'optional introduction flag errors must not report the usable reader as failed to start');assert.equal(await page.evaluate(()=>__calls.length),0);assert.equal(await page.evaluate(()=>__values['click-context:v1:introduced']),undefined);
+ await page.evaluate(()=>__menus['点击语境查词：阅读设置']());await page.locator('lextide-reader #words').check();await page.locator('lextide-reader .panel .close').click();await page.locator('#word').click();await page.waitForFunction(()=>__calls.length===1);await page.evaluate(()=>window.dispatchEvent(new Event('pagehide')));assert.equal(await page.evaluate(()=>__aborts),1);assert.equal(await page.locator('lextide-reader .dict').isVisible(),false);
+ await page.evaluate(()=>{__recover=true;window.dispatchEvent(new Event('pageshow'));});assert.equal(await page.evaluate(()=>__calls.length),1);await page.locator('#word').click();await page.waitForFunction(()=>document.querySelector('lextide-reader').shadowRoot.querySelector('.zh').textContent==='课程');assert.deepEqual(errors,[]);assert.deepEqual(await page.evaluate(()=>__alerts),[]);check.status='passed';
+ }catch(error){check.error=error.stack;}finally{report.checks.push(check);await page.close();}
+ }report.status=report.checks.every(c=>c.status==='passed')?'passed':'failed';}finally{await browser.close();await writeFile(process.env.USERSCRIPT_INTRODUCTION_REPORT||'test-results/userscript-introduction-report.json',JSON.stringify(report,null,2)+'\n');console.log(JSON.stringify(report));}if(report.status!=='passed')process.exitCode=1;
