@@ -1,0 +1,518 @@
+{
+  "date": "2026-10-24",
+  "model": "@cf/zai-org/glm-4.7-flash",
+  "kind": "fixed 29-case direct-model candidate comparison; existing source assertions; each case once; not script/native acceptance",
+  "changedLiveModel": false,
+  "status": "failed",
+  "samples": [
+    {
+      "id": 0,
+      "word": "class",
+      "sentence": "This class is co-taught by Anish, Jon, and Jose.",
+      "offset": 5,
+      "expected": "课程",
+      "httpStatus": 200,
+      "finishReason": "stop",
+      "meaning": {
+        "lemma": "class",
+        "pos": "NOUN",
+        "senseId": "collins-1",
+        "zh": "班级"
+      },
+      "ms": 1463,
+      "passed": false
+    },
+    {
+      "id": 1,
+      "word": "class",
+      "sentence": "This class is co-taught by Anish, Jon, and Jose.",
+      "offset": 5,
+      "expected": "课程",
+      "httpStatus": 200,
+      "finishReason": "stop",
+      "meaning": {
+        "lemma": "class",
+        "pos": "NOUN",
+        "senseId": "collins-1",
+        "zh": "班级"
+      },
+      "ms": 950,
+      "passed": false
+    },
+    {
+      "id": 2,
+      "word": "class",
+      "sentence": "This class is co-taught by Anish, Jon, and Jose.",
+      "offset": 5,
+      "expected": "课程",
+      "httpStatus": 200,
+      "finishReason": "stop",
+      "meaning": {
+        "lemma": "class",
+        "pos": "NOUN",
+        "senseId": "collins-1",
+        "zh": "班级"
+      },
+      "ms": 1065,
+      "passed": false
+    },
+    {
+      "id": 3,
+      "word": "class",
+      "sentence": "The class applauded when the teacher entered.",
+      "offset": 4,
+      "expected": "班|学生",
+      "httpStatus": 200,
+      "finishReason": "stop",
+      "meaning": {
+        "lemma": "class",
+        "pos": "NOUN",
+        "senseId": "collins-1",
+        "zh": "班级"
+      },
+      "ms": 1039,
+      "passed": true
+    },
+    {
+      "id": 4,
+      "word": "class",
+      "sentence": "She teaches a class on modern history.",
+      "offset": 14,
+      "expected": "课|课程",
+      "httpStatus": 200,
+      "finishReason": "stop",
+      "meaning": {
+        "lemma": "class",
+        "pos": "NOUN",
+        "senseId": "collins-2",
+        "zh": "课程"
+      },
+      "ms": 1042,
+      "passed": true
+    },
+    {
+      "id": 5,
+      "word": "bank",
+      "sentence": "She deposited her salary at the bank.",
+      "offset": 32,
+      "expected": "银行|金融机构",
+      "httpStatus": 200,
+      "finishReason": "stop",
+      "meaning": {
+        "lemma": "bank",
+        "pos": "NOUN",
+        "senseId": "collins-1",
+        "zh": "银行"
+      },
+      "ms": 852,
+      "passed": true
+    },
+    {
+      "id": 6,
+      "word": "bank",
+      "sentence": "They sat on the bank beside the river.",
+      "offset": 16,
+      "expected": "岸",
+      "httpStatus": 200,
+      "finishReason": "stop",
+      "meaning": {
+        "lemma": "bank",
+        "pos": "NOUN",
+        "senseId": "collins-7",
+        "zh": "河岸"
+      },
+      "ms": 930,
+      "passed": true
+    },
+    {
+      "id": 7,
+      "word": "available",
+      "sentence": "Tickets are available online from Monday.",
+      "offset": 12,
+      "expected": "购买|售|购|获得|获取|领取|取得",
+      "httpStatus": 200,
+      "finishReason": "stop",
+      "meaning": {
+        "lemma": "available",
+        "pos": "ADJ",
+        "senseId": "collins-1",
+        "zh": "可购买的"
+      },
+      "ms": 740,
+      "passed": true
+    },
+    {
+      "id": 8,
+      "word": "available",
+      "sentence": "Are you available for a meeting tomorrow?",
+      "offset": 8,
+      "expected": "有空|时间|方便",
+      "httpStatus": 200,
+      "finishReason": "stop",
+      "meaning": {
+        "lemma": "available",
+        "pos": "ADJ",
+        "senseId": "collins-2",
+        "zh": "有空的"
+      },
+      "ms": 706,
+      "passed": true
+    },
+    {
+      "id": 9,
+      "word": "hugging",
+      "sentence": "She was hugging her daughter tightly.",
+      "offset": 8,
+      "expected": "抱|搂",
+      "httpStatus": 200,
+      "finishReason": "stop",
+      "meaning": {
+        "lemma": "hug",
+        "pos": "VERB",
+        "senseId": "collins-1",
+        "zh": "紧紧拥抱"
+      },
+      "ms": 727,
+      "passed": true
+    },
+    {
+      "id": 10,
+      "word": "listed",
+      "sentence": "The company is listed on the London Stock Exchange.",
+      "offset": 15,
+      "expected": "上市|挂牌",
+      "httpStatus": 200,
+      "finishReason": "stop",
+      "meaning": {
+        "lemma": "list",
+        "pos": "VERB",
+        "senseId": "collins-5",
+        "zh": "上市"
+      },
+      "ms": 815,
+      "passed": true
+    },
+    {
+      "id": 11,
+      "word": "wound",
+      "sentence": "She wound the bandage around the wound.",
+      "offset": 4,
+      "expected": "缠|绕",
+      "httpStatus": 200,
+      "finishReason": "stop",
+      "meaning": {
+        "lemma": "wound",
+        "pos": "VERB",
+        "senseId": "collins-3",
+        "zh": "缠绕"
+      },
+      "ms": 1075,
+      "passed": true
+    },
+    {
+      "id": 12,
+      "word": "wound",
+      "sentence": "She wound the bandage around the wound.",
+      "offset": 33,
+      "expected": "伤",
+      "httpStatus": 200,
+      "finishReason": "stop",
+      "meaning": {
+        "lemma": "wound",
+        "pos": "NOUN",
+        "senseId": "collins-2",
+        "zh": "伤口"
+      },
+      "ms": 704,
+      "passed": true
+    },
+    {
+      "id": 13,
+      "word": "tear",
+      "sentence": "A tear rolled down her cheek as she noticed a tear in the curtain.",
+      "offset": 2,
+      "expected": "泪",
+      "httpStatus": 200,
+      "finishReason": "stop",
+      "meaning": {
+        "lemma": "tear",
+        "pos": "N-COUNT",
+        "senseId": "collins-1",
+        "zh": "眼泪"
+      },
+      "ms": 10870,
+      "passed": true
+    },
+    {
+      "id": 14,
+      "word": "tear",
+      "sentence": "A tear rolled down her cheek as she noticed a tear in the curtain.",
+      "offset": 46,
+      "expected": "裂|破口|破洞",
+      "httpStatus": 200,
+      "finishReason": "stop",
+      "meaning": {
+        "lemma": "tear",
+        "pos": "N-COUNT",
+        "senseId": "collins-5",
+        "zh": "破洞"
+      },
+      "ms": 1249,
+      "passed": true
+    },
+    {
+      "id": 15,
+      "word": "bass",
+      "sentence": "The bass player cooked a bass for dinner.",
+      "offset": 4,
+      "expected": "低音|贝斯|贝司",
+      "forbidden": "演奏|乐手|乐师",
+      "httpStatus": 200,
+      "finishReason": "stop",
+      "meaning": {
+        "lemma": "bass",
+        "pos": "NOUN",
+        "senseId": null,
+        "zh": "低音提琴"
+      },
+      "ms": 1089,
+      "passed": true
+    },
+    {
+      "id": 16,
+      "word": "bass",
+      "sentence": "The bass player cooked a bass for dinner.",
+      "offset": 25,
+      "expected": "鲈",
+      "forbidden": "鳜|桂鱼",
+      "httpStatus": 200,
+      "finishReason": "stop",
+      "meaning": {
+        "lemma": "bass",
+        "pos": "NOUN",
+        "senseId": null,
+        "zh": "鲈鱼"
+      },
+      "ms": 977,
+      "passed": true
+    },
+    {
+      "id": 17,
+      "word": "coffee",
+      "sentence": "She put the coffee cup on the table.",
+      "offset": 12,
+      "expected": "咖啡",
+      "forbidden": "杯",
+      "httpStatus": 200,
+      "finishReason": "stop",
+      "meaning": {
+        "lemma": "coffee",
+        "pos": "N-UNCOUNT",
+        "senseId": "collins-1",
+        "zh": "咖啡"
+      },
+      "ms": 947,
+      "passed": true
+    },
+    {
+      "id": 18,
+      "word": "stone",
+      "sentence": "The stone wall stood beside the path.",
+      "offset": 4,
+      "expected": "石|岩",
+      "forbidden": "墙",
+      "httpStatus": 200,
+      "finishReason": "stop",
+      "meaning": {
+        "lemma": "stone",
+        "pos": "N-MASS",
+        "senseId": "collins-1",
+        "zh": "石头(的)"
+      },
+      "ms": 921,
+      "passed": true
+    },
+    {
+      "id": 19,
+      "word": "chicken",
+      "sentence": "The chef served chicken soup for lunch.",
+      "offset": 16,
+      "expected": "鸡",
+      "forbidden": "汤",
+      "httpStatus": 200,
+      "finishReason": "stop",
+      "meaning": {
+        "lemma": "chicken",
+        "pos": "N-UNCOUNT",
+        "senseId": "collins-2",
+        "zh": "鸡肉"
+      },
+      "ms": 820,
+      "passed": true
+    },
+    {
+      "id": 20,
+      "word": "train",
+      "sentence": "We waited outside the train station.",
+      "offset": 22,
+      "expected": "火车|列车",
+      "forbidden": "车站|站台",
+      "httpStatus": 200,
+      "finishReason": "stop",
+      "meaning": {
+        "lemma": "train",
+        "pos": "NOUN",
+        "senseId": "collins-1",
+        "zh": "火车"
+      },
+      "ms": 867,
+      "passed": true
+    },
+    {
+      "id": 21,
+      "word": "baby",
+      "sentence": "They installed a baby seat in the car.",
+      "offset": 17,
+      "expected": "婴|幼|宝宝",
+      "forbidden": "座|椅",
+      "httpStatus": 200,
+      "finishReason": "stop",
+      "meaning": {
+        "lemma": "baby",
+        "pos": "ADJ",
+        "senseId": "collins-4",
+        "zh": "(蔬菜) 小的"
+      },
+      "ms": 1116,
+      "passed": false
+    },
+    {
+      "id": 22,
+      "word": "wine",
+      "sentence": "He washed the wine glass after dinner.",
+      "offset": 14,
+      "expected": "葡萄酒|酒",
+      "forbidden": "杯",
+      "httpStatus": 200,
+      "finishReason": "stop",
+      "meaning": {
+        "lemma": "wine",
+        "pos": "N-MASS",
+        "senseId": "collins-1",
+        "zh": "葡萄酒; 果酒"
+      },
+      "ms": 973,
+      "passed": true
+    },
+    {
+      "id": 23,
+      "word": "bass",
+      "sentence": "The bass speaker was beside the stage.",
+      "offset": 4,
+      "expected": "低音|低频|贝斯|贝司",
+      "forbidden": "扬声器|音箱",
+      "httpStatus": 200,
+      "finishReason": "stop",
+      "meaning": {
+        "lemma": "bass",
+        "pos": "NOUN",
+        "senseId": null,
+        "zh": "低音"
+      },
+      "ms": 841,
+      "passed": true
+    },
+    {
+      "id": 24,
+      "word": "power",
+      "sentence": "Press the power button to start the computer.",
+      "offset": 10,
+      "expected": "电源|电力",
+      "forbidden": "按钮",
+      "httpStatus": 200,
+      "finishReason": "stop",
+      "meaning": {
+        "lemma": "power",
+        "pos": "NOUN",
+        "senseId": "collins-8",
+        "zh": "(电) 能量"
+      },
+      "ms": 937,
+      "passed": false
+    },
+    {
+      "id": 25,
+      "word": "laser",
+      "sentence": "The office bought a laser printer.",
+      "offset": 20,
+      "expected": "激光",
+      "forbidden": "打印机|打印器",
+      "httpStatus": 200,
+      "finishReason": "stop",
+      "meaning": {
+        "lemma": "laser",
+        "pos": "NOUN",
+        "senseId": "collins-1",
+        "zh": "激光"
+      },
+      "ms": 785,
+      "passed": true
+    },
+    {
+      "id": 26,
+      "word": "history",
+      "sentence": "The history teacher explained the event.",
+      "offset": 4,
+      "expected": "历史",
+      "forbidden": "教师|老师",
+      "httpStatus": 200,
+      "finishReason": "stop",
+      "meaning": {
+        "lemma": "history",
+        "pos": "N-UNCOUNT",
+        "senseId": "collins-1",
+        "zh": "历史"
+      },
+      "ms": 1392,
+      "passed": true
+    },
+    {
+      "id": 27,
+      "word": "emergency",
+      "sentence": "They opened the emergency exit.",
+      "offset": 16,
+      "expected": "紧急|应急",
+      "forbidden": "出口",
+      "httpStatus": 200,
+      "finishReason": "stop",
+      "meaning": {
+        "lemma": "emergency",
+        "pos": "NOUN",
+        "senseId": "collins-1",
+        "zh": "紧急情况"
+      },
+      "ms": 752,
+      "passed": true
+    },
+    {
+      "id": 28,
+      "word": "bass",
+      "sentence": "The angler released the bass back into the lake.",
+      "offset": 24,
+      "expected": "鲈",
+      "forbidden": "鳜|桂鱼",
+      "httpStatus": 200,
+      "finishReason": "stop",
+      "meaning": {
+        "lemma": "bass",
+        "pos": "NOUN",
+        "senseId": null,
+        "zh": "鲈鱼"
+      },
+      "ms": 1391,
+      "passed": true
+    }
+  ],
+  "passed": 24,
+  "failed": 5
+}
