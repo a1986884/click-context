@@ -28,7 +28,10 @@ function canonicalPOS(value){
 }
 export function parseContextResult(raw,input){
  if(input.contextRevision&&raw?.method&&raw.method!==input.contextRevision)throw invalidContext('invalid-shape','语境服务修订不匹配，请刷新后重试');
- if(raw?.status==='incomplete'||raw?.incomplete_details||raw?.choices?.[0]?.finish_reason==='length')throw invalidContext('incomplete','语境结果不完整，请重试');
+ if(raw?.status==='incomplete'||raw?.incomplete_details||raw?.choices?.[0]?.finish_reason==='length'){
+  const cause=raw?.incomplete_details?.reason,incompleteReason=cause==='max_output_tokens'||raw?.choices?.[0]?.finish_reason==='length'?'max-output-tokens':cause==='content_filter'?'content-filter':'unknown';
+  throw Object.assign(invalidContext('incomplete','语境结果不完整，请重试'),{incompleteReason});
+ }
  let value=raw?.response??raw?.choices?.[0]?.message?.content??(Array.isArray(raw?.output)?raw.output.filter(item=>item.type==='message').flatMap(item=>item.content||[]).filter(part=>part.type==='output_text').map(part=>part.text).join(''):raw);
  if(typeof value==='string'){value=value.replace(/<think>[\s\S]*?<\/think>/g,'').trim().replace(/^```(?:json)?\s*|\s*```$/g,'');try{value=JSON.parse(value);}catch{throw invalidContext('invalid-json','语境服务返回了无效结果');}}
  if(!value||value.senseId===undefined||typeof value.zh!=='string')throw invalidContext('invalid-shape','语境服务结果未通过校验');
@@ -43,8 +46,8 @@ export function parseContextResult(raw,input){
 }
 function contextFailure(code,message,{status,retryable=false,validationReason}={}){return Object.assign(Error(message),{code,retryable,...(status?{upstreamStatus:status}:{}),...(code==='CONTEXT_INVALID_RESULT'?{validationReason:CONTEXT_VALIDATION_REASONS.includes(validationReason)?validationReason:'unknown'}:{})});}
 function serviceFailure(status,body){
- const known={CONTEXT_BUSY:'语境服务繁忙，请稍后重试',CONTEXT_TIMEOUT:'语境分析超时，请重试',CONTEXT_INVALID_RESULT:'语境结果未通过校验，请重试',CONTEXT_UNAVAILABLE:'语境服务暂不可用，请重试'};
- if(status>=500&&Object.hasOwn(known,body?.code))return contextFailure(body.code,known[body.code],{status,validationReason:body.validationReason});
+ const known={CONTEXT_QUOTA_EXCEEDED:'内置 AI 当日额度已用完，请更换语境 AI 或等待额度重置',CONTEXT_BUSY:'语境服务繁忙，请稍后重试',CONTEXT_TIMEOUT:'语境分析超时，请重试',CONTEXT_INVALID_RESULT:'语境结果未通过校验，请重试',CONTEXT_UNAVAILABLE:'语境服务暂不可用，请重试'};
+ if(status>=500&&Object.hasOwn(known,body?.code))return contextFailure(body.code,body.code==='CONTEXT_INVALID_RESULT'&&body.validationReason==='incomplete'?'语境模型输出不完整，请更换语境 AI 或稍后手动重试':known[body.code],{status,validationReason:body.validationReason});
  const [code,message]=status===429?['RATE_LIMITED','语境查询过于频繁，请稍后重试']:status===401||status===403?['CONTEXT_ACCESS_DENIED','语境服务拒绝了请求，请稍后重试']:status===400?['CONTEXT_INVALID_REQUEST','语境请求未通过校验，请重新查词']:['CONTEXT_UNAVAILABLE','语境服务暂不可用，请重试'];
  return contextFailure(code,typeof body?.error==='string'&&body.error.trim()?body.error.trim().slice(0,200):message,{status});
 }

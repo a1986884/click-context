@@ -36,7 +36,7 @@ export function mountReader({root=document.body,transport=async(type,text,online
  <button id="lookup-selection" class="selection-action" hidden>查词 / 短语</button><button id="translate-selection" class="selection-action" hidden>翻译选文</button><div class="tool-dock"><button class="bubble" aria-label="切换点击查词" aria-expanded="false" aria-pressed="false" title="点击开关查词；长按设置">查词</button></div>`;
  shadow.querySelector('.dictionary-notice').textContent=dictionaryNotice;
  const $=s=>shadow.querySelector(s),bubble=$('.bubble');let prefs={...DEFAULT_PREFS,online:true},destroyed=false,requestId=0,active='',lastFocus=null,lookupController=null,lastEntry=null,context='',cardPoint=null,contextOffset=null,pendingSelection=null,manualPosition=null,drag=null,selectionFrame=null;
- let lookupInFlight=null;
+ let lookupInFlight=null,pausedFeatures=null,toggleQueue=Promise.resolve();
  let saveFailure=null,favoriteResumeQueued=false,saveReady=false,savedRevision=0,savedKeys=new Set();const savingKeys=new Set();
  function renderSave(){const key=lastEntry?vocabularyKey(lastEntry):null,pending=key&&savingKeys.has(key);$('#save').disabled=!saveReady||!lastEntry?.zh||Boolean(pending);$('#save').textContent=pending?'保存中…':key&&savedKeys.has(key)?'已收藏':'收藏';}
  async function refreshSaved(id){const revision=savedRevision;try{const words=await store.words();if(destroyed||id!==requestId||revision!==savedRevision)return;savedKeys=new Set(words.map(vocabularyKey));renderSave();}catch{/* Favorite status is optional; a read failure must not hide dictionary results. */}}
@@ -74,23 +74,33 @@ export function mountReader({root=document.body,transport=async(type,text,online
  }
  function moveBubble(left,top){const v=bubbleSpace();prefs.bubblePosition={x:v.width?Math.max(0,Math.min(1,(left-v.left)/v.width)):0,y:v.height?Math.max(0,Math.min(1,(top-v.top)/v.height)):0};position();}
 
- function update(){position();const translating=prefs.enabled&&prefs.mode!=='original';$('#words').checked=prefs.words;$('#bilingual-enabled').checked=translating;for(const [id,value] of [['mode',prefs.mode],['side',prefs.side],['translation-unit',prefs.translationUnit]])for(const option of $('#'+id).querySelectorAll('option'))option.selected=option.value===value;$('#translation-unit').disabled=prefs.mode==='translated';const active=prefs.words||translating;bubble.setAttribute('aria-pressed',String(active));bubble.setAttribute('aria-label',active?'关闭点击查词（停止查词和正文翻译，长按设置）':'开启点击查词（长按设置正文双语）');bubble.setAttribute('aria-description','可拖动，或聚焦后用方向键移动；长按或 Shift+F10 打开设置');bubble.title=active?'点击关闭查词和正文翻译，恢复原文；长按设置':'已关闭：点击开启查词；正文双语在长按设置中开启';host.dispatchEvent(new window.Event('readerstatechange'));}
+ function update(){position();const translating=prefs.enabled&&prefs.mode!=='original';$('#words').checked=pausedFeatures?.words??prefs.words;$('#bilingual-enabled').checked=pausedFeatures?.enabled??translating;for(const [id,value] of [['mode',prefs.mode],['side',prefs.side],['translation-unit',prefs.translationUnit]])for(const option of $('#'+id).querySelectorAll('option'))option.selected=option.value===value;$('#translation-unit').disabled=prefs.mode==='translated';const active=prefs.words||translating;bubble.setAttribute('aria-pressed',String(active));bubble.setAttribute('aria-label',active?'关闭点击查词（停止查词和正文翻译，长按设置）':'开启点击查词（长按设置正文双语）');bubble.setAttribute('aria-description','可拖动，或聚焦后用方向键移动；长按或 Shift+F10 打开设置');bubble.title=active?'点击关闭查词和正文翻译，恢复原文；长按设置':pausedFeatures?'已暂停：点击恢复关闭前的功能设置；长按修改设置':'已关闭：点击开启查词；正文双语在长按设置中开启';host.dispatchEvent(new window.Event('readerstatechange'));}
  function closeSettings(){$('.panel').hidden=true;bubble.setAttribute('aria-expanded','false');}
- function openSettings(){if(destroyed)return;closeSelection();if(!saveReady)close();$('.panel').hidden=false;$('.vocab').hidden=true;bubble.setAttribute('aria-expanded','true');$('#mode').focus({preventScroll:true});}
+ function openSettings(){if(destroyed)return;closeSelection();if(!saveReady)close();$('.panel').hidden=false;$('.vocab').hidden=true;bubble.setAttribute('aria-expanded','true');$('#mode').focus({preventScroll:true});if(pausedFeatures)report('总开关已暂停，设置已保留；点击小球恢复。');}
  function close({restoreFocus=false}={}){lookupInFlight=null;requestId++;lookupController?.abort();closeSelection();stopDrag();$('.dict').hidden=true;$('#lookup-selection').hidden=true;$('#translate-selection').hidden=true;pendingSelection=null;cancelSelectionFrame();if(restoreFocus){if(lastFocus?.isConnected)lastFocus.focus?.({preventScroll:true});if(!lastFocus?.isConnected||document.activeElement!==lastFocus)bubble.focus({preventScroll:true});}}
  async function apply(){translator.stop();update();if(prefs.enabled&&prefs.mode!=='original')await translator.start(prefs.mode,prefs.online,prefs.translationUnit);else report('原文模式 · '+(prefs.words?'查词开启，链接不跳转':'查词关闭，链接正常'));}
  const ready=store.prefs().then(p=>{if(destroyed)return;prefs={...p,online:true};void apply();}).catch(()=>{report('无法读取偏好，使用默认设置');update();});
- async function setEnabled(value){await ready;if(destroyed)return;prefs.enabled=Boolean(value);closeSettings();if(!prefs.enabled)await Promise.all([apply(),persist()]);else{update();await persist();await apply();}}
- async function setMode(mode){if(!['original','bilingual','translated'].includes(mode))return;await ready;if(destroyed)return;prefs.mode=mode;prefs.enabled=true;translator.stop();update();await persist();await apply();}
+ async function setEnabled(value){await ready;if(destroyed)return;if(pausedFeatures){pausedFeatures.enabled=Boolean(value)&&prefs.mode!=='original';update();return;}prefs.enabled=Boolean(value);if(!prefs.enabled)await Promise.all([apply(),persist()]);else{update();await persist();await apply();}}
+ async function setMode(mode){if(!['original','bilingual','translated'].includes(mode))return;await ready;if(destroyed)return;prefs.mode=mode;if(pausedFeatures){pausedFeatures.enabled=mode!=='original';update();await persist();return;}prefs.enabled=true;translator.stop();update();await persist();await apply();}
  async function setTranslationUnit(value){if(!['paragraph','sentence'].includes(value))return;await ready;if(destroyed)return;prefs.translationUnit=value;await Promise.all([apply(),persist()]);}
- async function setWords(value){await ready;if(destroyed)return;prefs.words=Boolean(value);if(!value)close();update();if(!prefs.enabled||prefs.mode==='original')report('原文模式 · '+(prefs.words?'查词开启，链接不跳转':'查词关闭，链接正常'));await persist();}
- async function toggleReader(){
-  await ready;if(destroyed)return;
-  if(prefs.words||prefs.enabled&&prefs.mode!=='original'){
-   prefs.words=false;prefs.enabled=false;translator.stop();close();closeSettings();window.speechSynthesis?.cancel();update();report('点击查词已关闭 · 原文阅读，链接正常跳转');await persist();
-  }else await setWords(true);
+ async function setWords(value){await ready;if(destroyed)return;if(pausedFeatures){pausedFeatures.words=Boolean(value);update();return;}prefs.words=Boolean(value);if(!value)close();update();if(!prefs.enabled||prefs.mode==='original')report('原文模式 · '+(prefs.words?'查词开启，链接不跳转':'查词关闭，链接正常'));await persist();}
+ // Main-switch pause is distinct from the chosen feature configuration.
+ // Keep it only in this reader session; page reload retains its existing policy.
+ function toggleReader(){
+  const job=toggleQueue.then(async()=>{
+   await ready;if(destroyed)return;
+   if(prefs.words||prefs.enabled&&prefs.mode!=='original'){
+    pausedFeatures={words:prefs.words,enabled:prefs.enabled&&prefs.mode!=='original'};
+    prefs.words=false;prefs.enabled=false;translator.stop();close();closeSettings();window.speechSynthesis?.cancel();update();report('已暂停 · 原文阅读，功能设置已保留');await persist();
+   }else if(pausedFeatures){
+    const resume=pausedFeatures;pausedFeatures=null;prefs.words=resume.words;prefs.enabled=resume.enabled;
+    closeSettings();update();await persist();void apply().catch(()=>report('正文翻译暂不可用，可在设置中重试'));
+   }else await setWords(true);
+  });
+  toggleQueue=job.catch(()=>{});return job;
  }
- function restore(){translator.stop();prefs.enabled=false;close();closeSettings();window.speechSynthesis?.cancel();update();report('已恢复原文；点词查询'+(prefs.words?'仍开启':'已关闭'));void persist();}
+
+ function restore(){translator.stop();if(pausedFeatures)pausedFeatures.enabled=false;prefs.enabled=false;close();closeSettings();window.speechSynthesis?.cancel();update();report('已恢复原文；点词查询'+(prefs.words?'仍开启':'已关闭'));void persist();}
  async function bilingual(){await ready;if(prefs.enabled&&prefs.mode!=='original')return setEnabled(false);return setMode('bilingual');}
  async function setBilingual(value){return value?setMode('bilingual'):setEnabled(false);}
  function show(word,target,sentence='',offset=null){
@@ -155,7 +165,7 @@ export function mountReader({root=document.body,transport=async(type,text,online
       }
      }catch(error){
       if(destroyed||id!==requestId)return;
-      if(!manuallySelected){if(ranked.ordered.length)displaySense(ranked.ordered[0]);else{$('.zh').textContent='暂未获得此处含义，请重试';$('.mini-meaning').textContent='暂未查到';}const reason={CONTEXT_BUSY:'语境服务繁忙，请稍后重试',RATE_LIMITED:'语境查询过于频繁，请稍后重试',CONTEXT_TIMEOUT:'语境分析超时，请重试',CONTEXT_NETWORK:'语境服务连接失败，请检查网络后重试',CONTEXT_INVALID_RESULT:'语境结果未通过校验，请重试',CONTEXT_UNAVAILABLE:'语境服务暂不可用，请重试',CONTEXT_ACCESS_DENIED:engineState.context&&engineState.context.id!=='builtin'?'所选语境 AI 的密钥或访问权限不可用，请检查已保存配置':'语境服务拒绝了请求，请稍后重试',ENGINE_STORAGE:'语境引擎配置无法读取，未发送原句；请打开引擎设置后重试',CONTEXT_INVALID_REQUEST:'语境请求未通过校验，请重新查词'}[error?.code]||'语境分析失败，请重试';$('.sense-status').textContent=reason+(ranked.ordered.length?' · 当前显示词典原义':'');$('#retry').hidden=false;$('#context-engine-settings').hidden=!onOpenContextEngines;}
+      if(!manuallySelected){if(ranked.ordered.length)displaySense(ranked.ordered[0]);else{$('.zh').textContent='暂未获得此处含义，请重试';$('.mini-meaning').textContent='暂未查到';}const reason=error?.code==='CONTEXT_INVALID_RESULT'&&error.validationReason==='incomplete'?'语境模型输出不完整，请更换语境 AI 或稍后手动重试':{CONTEXT_QUOTA_EXCEEDED:'内置 AI 当日额度已用完，请更换语境 AI 或等待额度重置',CONTEXT_BUSY:'语境服务繁忙，请稍后重试',RATE_LIMITED:'语境查询过于频繁，请稍后重试',CONTEXT_TIMEOUT:'语境分析超时，请重试',CONTEXT_NETWORK:'语境服务连接失败，请检查网络后重试',CONTEXT_INVALID_RESULT:'语境结果未通过校验，请重试',CONTEXT_UNAVAILABLE:'语境服务暂不可用，请重试',CONTEXT_ACCESS_DENIED:engineState.context&&engineState.context.id!=='builtin'?'所选语境 AI 的密钥或访问权限不可用，请检查已保存配置':'语境服务拒绝了请求，请稍后重试',ENGINE_STORAGE:'语境引擎配置无法读取，未发送原句；请打开引擎设置后重试',CONTEXT_INVALID_REQUEST:'语境请求未通过校验，请重新查词'}[error?.code]||'语境分析失败，请重试';$('.sense-status').textContent=reason+(ranked.ordered.length?' · 当前显示词典原义':'');$('#retry').hidden=false;$('#context-engine-settings').hidden=!onOpenContextEngines;}
      }
     }
     $('.related').textContent=(result.relatedForms||[]).length?'派生词：'+result.relatedForms.map(s=>s.word+'（'+s.zh+'）').join('；'):'';
@@ -311,7 +321,7 @@ export function mountReader({root=document.body,transport=async(type,text,online
   }
  };
  bubble.onclick=()=>{if(suppressClick){suppressClick=false;return;}void toggleReader();};update();
- async function configure(next){await ready;if(destroyed)return;if(JSON.stringify(prefs)===JSON.stringify(next))return;const restart=['mode','enabled','online','translationUnit'].some(k=>prefs[k]!==next[k]);prefs={...DEFAULT_PREFS,...next,online:true};if(!prefs.words)close();update();if(restart){translator.stop();void apply();}}
+ async function configure(next){await ready;if(destroyed)return;if(JSON.stringify(prefs)===JSON.stringify(next))return;const restart=['mode','enabled','online','translationUnit'].some(k=>prefs[k]!==next[k]);pausedFeatures=null;prefs={...DEFAULT_PREFS,...next,online:true};if(!prefs.words)close();update();if(restart){translator.stop();void apply();}}
  window.addEventListener('focus',resumeFavorites);document.addEventListener('visibilitychange',visibilityResumed);
  return {ready,configure,configureEngines,show,bilingual,setBilingual,restore,setEnabled,setMode,setWords,setTranslationUnit,openSettings,openVocabulary,exportWords,shadow,get enabled(){return prefs.enabled;},get mode(){return prefs.enabled?prefs.mode:'original';},get preferences(){return {...prefs};},destroy(){destroyed=true;lookupInFlight=null;closeSelection();window.removeEventListener('focus',resumeFavorites);document.removeEventListener('visibilitychange',visibilityResumed);for(const type of ['click','auxclick','keydown'])window.removeEventListener(type,interceptLink,true);document.removeEventListener('selectionchange',selectionChanged);clearPress();requestId++;lookupController?.abort();translator.stop();root.removeEventListener('click',clicked);document.removeEventListener('keydown',keydown);document.removeEventListener('click',outside);for(const [type,fn] of [['pointerdown',touchStart],['pointermove',touchMove],['pointerup',touchEnd],['pointercancel',touchEnd]])root.removeEventListener(type,fn);window.visualViewport?.removeEventListener('resize',viewportChanged);window.visualViewport?.removeEventListener('scroll',viewportChanged);window.removeEventListener('resize',viewportChanged);window.removeEventListener('scroll',queueSelectionPosition,true);cancelSelectionFrame();host.remove();}};
 }
