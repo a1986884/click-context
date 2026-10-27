@@ -24,7 +24,8 @@ try{
   // completed status, and verify both engine identity and actual provenance.
   const checkProgress=async(pattern,message)=>{
    const status=page.locator('lextide-reader #status');
-   await status.filter({hasText:pattern}).waitFor();
+   // The settings panel may be closed while its status continues updating.
+   await status.filter({hasText:pattern}).waitFor({state:'attached'});
    assert.match(await status.textContent(),pattern,message);
   };
   await select('long');assert.equal(await page.locator('lextide-reader #lookup-selection').isVisible(),false);assert.equal(await page.evaluate(()=>__calls.length),0);
