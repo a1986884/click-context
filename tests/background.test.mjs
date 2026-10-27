@@ -43,6 +43,26 @@ test('background validates sender/frame/UI and independently enforces stored con
  });
  await t.test('only own UI may control tabs; preference validation and independent word switch apply',async()=>{assert.equal((await send({type:'control',action:'enable',tabId:2},content(1))).ok,false);await send({type:'control',action:'prefs',tabId:1,prefs:{mode:'original',words:false,online:false}});assert.equal((await send({type:'lookup',text:'ocean',requestId:'e'},content(1))).ok,false);});
  await t.test('vocabulary UI tab can read but cannot arbitrarily write raw entries',async()=>{const vocabulary={...ui,tab:{id:9},url:api.runtime.getURL('vocabulary.html')};assert.equal((await send({type:'store',op:'words',args:[]},vocabulary)).ok,true);assert.equal((await send({type:'store',op:'saveWord',args:[{lemma:'evil'}]},vocabulary)).ok,false);});
+ await t.test('only trusted vocabulary UI may correct an existing record and edits cannot rewrite its provenance',async()=>{
+  const before=structuredClone(local.data['v2:words']);try{await send({type:'store',op:'importWords',args:[{version:2,words:[{word:'terminal',zh:'航站楼',sentence:'The terminal is closed.'}]}]},ui);const rows=local.data['v2:words'],item=rows.find(w=>w.word==='terminal'),key=JSON.stringify([item.lemma,item.zh,item.sentence]);
+   assert.equal((await send({type:'store',op:'updateWord',args:[key,{zh:'终端'}]},content(1))).ok,false);assert.equal((await send({type:'store',op:'updateWord',args:[key,{source:'forged'}]},ui)).ok,false);
+   const changed=await send({type:'store',op:'updateWord',args:[key,{zh:'终端'}]},ui);assert.equal(changed.ok,true);assert.equal(changed.data.reviewState,'pending');assert.equal(changed.data.sentence,item.sentence);assert.equal(changed.data.source,item.source);
+  }finally{if(before===undefined)delete local.data['v2:words'];else local.data['v2:words']=before;}
+ });
+ await t.test('vocabulary draft operations are limited to trusted UI and preserve the original favorite',async()=>{
+  const before=structuredClone(local.data['v2:vocabulary-drafts']);try{
+   const entry={word:'terminal',lemma:'terminal',zh:'终端',sentence:'The terminal is closed.'};
+   for(const [op,args]of [['vocabularyDrafts',[]],['saveVocabularyDraft',[entry,'未保存的草稿']],['removeVocabularyDraft',['anything']]])assert.equal((await send({type:'store',op,args},content(1))).ok,false);
+   assert.equal((await send({type:'store',op:'saveVocabularyDraft',args:[entry,'未保存的草稿']},ui)).ok,true);
+   const drafts=await send({type:'store',op:'vocabularyDrafts',args:[]},ui);assert.equal(drafts.ok,true);assert.equal(drafts.data[0].text,'未保存的草稿');
+   const newer=await send({type:'store',op:'saveVocabularyDraft',args:[entry,'另一个窗口的新草稿',drafts.data[0]]},ui);assert.equal(newer.ok,true);
+   const stale=await send({type:'store',op:'removeVocabularyDraft',args:[drafts.data[0].key,drafts.data[0]]},ui);assert.equal(stale.ok,false);assert.equal(stale.code,'DRAFT_CONFLICT');
+   const copy=await send({type:'store',op:'saveVocabularyDraft',args:[entry,'独立副本',null,'copy-native-test']},ui);assert.equal(copy.ok,true);assert.equal(copy.data.id,'copy-native-test');
+   assert.equal((await send({type:'store',op:'removeVocabularyDraft',args:[drafts.data[0].key,newer.data]},ui)).ok,true);
+   assert.deepEqual((await send({type:'store',op:'vocabularyDrafts',args:[]},ui)).data.map(d=>d.id),['copy-native-test']);
+   assert.equal((await send({type:'store',op:'removeVocabularyDraft',args:['copy-native-test',copy.data]},ui)).ok,true);
+  }finally{if(before===undefined)delete local.data['v2:vocabulary-drafts'];else local.data['v2:vocabulary-drafts']=before;}
+ });
  await t.test('only trusted extension UI can import vocabulary and invalid imports preserve existing data',async()=>{const before=structuredClone(local.data['v2:words']);assert.equal((await send({type:'store',op:'importWords',args:[{version:2,words:[{word:'unit'}]}]},content(1))).ok,false);assert.equal((await send({type:'store',op:'importWords',args:[{version:2,words:[{word:'invalid <word>'}]}]})).ok,false);assert.deepEqual(local.data['v2:words'],before);});
  await t.test('trusted UI restores a valid backup above 2 MB while transport bytes remain bounded',async()=>{
   const before=structuredClone(local.data['v2:words']);const words=Array.from({length:1800},(_,i)=>({word:'study',zh:'学习',sentence:String(i)+':'+ 'A'.repeat(1200-6)}));
