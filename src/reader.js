@@ -193,7 +193,7 @@ export function mountReader({root=document.body,transport=async(type,text,online
         if(contextOption){contextOption.textContent='查看词典原义';contextOption.selected=true;}
         $('.sense-status').textContent=selected?'此处含义 · AI 结合原句分析':meaning.meaningStatus==='candidate'?'可能的含义 · AI 候选，请结合上下文核对':meaning.reviewStatus==='scope-unconfirmed'?'此处含义 · AI 释义（复核未确认，请结合原句判断）':meaning.reviewStatus==='evidence-unconfirmed'?'此处含义 · AI 释义（复核依据未确认，请结合上下文判断）':'此处含义 · AI 释义（词典义项未确认）';
         const provider=engineState.context&&engineState.context.id!=='builtin'?'（'+contextProviderName()+'）':'';
-        $('.zh-source').textContent=meaning.meaningStatus==='candidate'?'AI 提出的一种可能读法，尚未确认；'+(result.senses.length?'下拉可查看词典原义核对':'当前没有可核对的词典义项'):selected?'AI 语境释义'+provider+'；对应 Collins '+(selected.lemma||result.word)+' 原义：'+selected.zh:result.senses.length?'AI'+provider+' 根据原句生成；下拉可查看 Collins 原始义项':'Collins 暂无可用义项；此处由 AI'+provider+' 根据原句释义。';if(!result.senses.length)$('.dictionary-label').textContent=meaning.meaningStatus==='candidate'?'AI · 候选释义':'AI · 语境释义';
+        $('.zh-source').textContent=meaning.meaningStatus==='candidate'?'AI'+provider+' 提出的一种可能读法，尚未确认；'+(result.senses.length?'下拉可查看词典原义核对':'当前没有可核对的词典义项'):selected?'AI 语境释义'+provider+'；对应 Collins '+(selected.lemma||result.word)+' 原义：'+selected.zh:result.senses.length?'AI'+provider+' 根据原句生成；下拉可查看 Collins 原始义项':'Collins 暂无可用义项；此处由 AI'+provider+' 根据原句释义。';if(!result.senses.length)$('.dictionary-label').textContent=meaning.meaningStatus==='candidate'?'AI · 候选释义':'AI · 语境释义';
        }
       }
      }catch(error){
