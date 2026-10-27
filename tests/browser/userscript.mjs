@@ -20,7 +20,7 @@ try{
    const get=(k,d)=>__values[k]??d,set=(k,v)=>{__values[k]=structuredClone(v);},menu=(name,fn)=>__menus[name]=fn;
    const request=d=>{__requests.push({url:d.url,body:d.data,anonymous:d.anonymous});const timer=setTimeout(()=>{
     const input=d.data?JSON.parse(d.data):null;
-    const body=d.url.includes('dict.youdao.com')?dictionary:JSON.stringify({ok:true,data:d.url.endsWith('/meaning')?{senseId:'collins-2',zh:'岸；河岸'}:{text:input.text.includes('morning')?'清晨很安静，河水缓缓流动。':'他们坐在河边的岸上。',version:input.translationRevision}});
+    const body=d.url.includes('dict.youdao.com')?dictionary:JSON.stringify({ok:true,data:d.url.endsWith('/meaning')?{lemma:'bank',pos:'NOUN',senseId:'collins-2',zh:'岸；河岸',method:input.contextRevision}:{text:input.text.includes('morning')?'清晨很安静，河水缓缓流动。':'他们坐在河边的岸上。',version:input.translationRevision}});
     d.onload({status:200,finalUrl:d.url,response:new TextEncoder().encode(body).buffer});
    },20);return {abort(){clearTimeout(timer);d.onabort();}};};
    if(api==='legacy')Object.assign(window,{GM_getValue:get,GM_setValue:set,GM_xmlhttpRequest:request,GM_registerMenuCommand:menu});
