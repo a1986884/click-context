@@ -44,7 +44,7 @@ import {USERSCRIPT_VERSION} from './version.js';
  currentEngines=engines.publicSettings();
  function clearIntroductionListeners(){document.removeEventListener('pointerdown',dismissAutomaticIntroduction,true);document.removeEventListener('keydown',dismissAutomaticIntroduction,true);}
  function dismissAutomaticIntroduction(){introductionAllowed=false;clearIntroductionListeners();}
- reader=mountReader({store,engines:engines.publicSettings(),onOpenEngines:()=>enginePanel.open(),onOpenContextEngines:()=>enginePanel.open(),isAuxiliaryUIEvent:event=>enginePanel?.ownsEvent(event)||diagnosticsPanel?.ownsEvent(event),transport:(type,text,online,options={})=>{
+ reader=mountReader({contextRevision:CONTEXT_CURRENT_REVISION,store,engines:engines.publicSettings(),onOpenEngines:()=>enginePanel.open(),onOpenContextEngines:()=>enginePanel.open(),isAuxiliaryUIEvent:event=>enginePanel?.ownsEvent(event)||diagnosticsPanel?.ownsEvent(event),transport:(type,text,online,options={})=>{
   if(type==='lookup')return lookup(text,{...options,online});
   if(type==='context')return engines.context(options.context,options);
   return engines.translate(type==='selection'?'selection':'body',text,options);

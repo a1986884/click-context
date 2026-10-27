@@ -7,7 +7,7 @@ import worker from '../../workers/context/index.js';
 const code=await readFile('build/userscript/click-context.user.js','utf8');
 const waitForStage=async stage=>{let timer;try{return await Promise.race([stage,new Promise((_resolve,reject)=>timer=setTimeout(()=>reject(Error('Fixture stage timed out')),5000))]);}finally{clearTimeout(timer);}};
 const sentence='This class is co-taught by Anish, Jon, and Jose.';
-const entry={word:'class',lemma:'class',kind:'collins',zh:'课程',source:'Synthetic Collins fixture',senses:[{id:'course',zh:'课程',definition:'A course of teaching in a particular subject.',pos:'N-COUNT',examples:[]}]};
+const entry={word:'class',lemma:'class',kind:'collins',zh:'课程',source:'Synthetic Collins fixture',senses:[{id:'course',lemma:'class',zh:'课程',definition:'A course of teaching in a particular subject.',pos:'N-COUNT',examples:[]}]};
 assert.equal(code.match(/@version\s+(\S+)/)?.[1],USERSCRIPT_VERSION,'generated script version must match the current source');
 const report={version:USERSCRIPT_VERSION,scriptSHA256:createHash('sha256').update(code).digest('hex'),kind:'ordinary Chromium; actual generated userscript, simulated GM/dictionary/AI; real local Worker origin validation',tampermonkeyInstalled:false,iPhoneTested:false,status:'failed',checks:[]};
 await mkdir('test-results',{recursive:true});const browser=await chromium.launch({executablePath:process.env.CHROMIUM_EXECUTABLE_PATH||'/usr/bin/chromium'});
@@ -22,7 +22,7 @@ try{
    if(d.url.includes('v04-preview'))return {status:200,body:JSON.stringify({ok:true,data:(['all-unavailable','both-unavailable'].includes(scenario)||scenario==='retry-recovers'&&!recovered)?{word:'class',lemma:'class',kind:'unavailable',senses:[],dictionaryError:'公开词条没有 Collins 栏目'}:entry})};
    if(scenario==='repeat-pending'){markAI();await new Promise(resolve=>releaseAI=resolve);}
    const input=JSON.parse(d.data);assert.equal(input.sentence,sentence);assert.equal(input.offset,5);
-   const response=await worker.fetch(new Request(d.url,{method:d.method,headers:{...d.headers,Origin:'https://course.example'},body:d.data}),{AI:{run:async()=>{if(['both-unavailable','denied-both-unavailable'].includes(scenario)||scenario==='retry-recovers'&&!recovered)throw Error('Synthetic unavailable');return {response:JSON.stringify({senseId:input.senses.length?'course':null,zh:'课程'})};}},PER_IP:{limit:async()=>({success:true})},TOTAL:{limit:async()=>({success:true})}});
+   const response=await worker.fetch(new Request(d.url,{method:d.method,headers:{...d.headers,Origin:'https://course.example'},body:d.data}),{AI:{run:async()=>{if(['both-unavailable','denied-both-unavailable'].includes(scenario)||scenario==='retry-recovers'&&!recovered)throw Error('Synthetic unavailable');return {response:JSON.stringify({lemma:'class',pos:'NOUN',senseId:null,zh:'课程'})};}},PER_IP:{limit:async()=>({success:true})},TOTAL:{limit:async()=>({success:true})}});
    return {status:response.status,body:await response.text()};
   });
   await page.goto('https://course.example/');
@@ -34,7 +34,7 @@ try{
   }else if(scenario==='retry-recovers'){
    await page.locator('lextide-reader #retry').waitFor();assert.equal(calls.length,3);recovered=true;await page.locator('lextide-reader #retry').click();await page.waitForFunction(()=>document.querySelector('lextide-reader').shadowRoot.querySelector('.zh').textContent==='课程');assert.equal(calls.length,6);assert.equal(await page.locator('lextide-reader #sense-choice').inputValue(),'course');assert.match(await page.locator('lextide-reader .dictionary-label').textContent(),/Collins/);
   }else if(['both-unavailable','denied-both-unavailable'].includes(scenario)){
-   await page.locator('lextide-reader #retry').waitFor();assert.doesNotMatch(await page.locator('lextide-reader .dict').textContent(),/此演示条目|示例释义/);assert.match(await page.locator('lextide-reader .defs').textContent(),scenario==='both-unavailable'?/公开词条没有 Collins 栏目/:/拒绝/);
+   await page.locator('lextide-reader #retry').waitFor();assert.doesNotMatch(await page.locator('lextide-reader .dict').textContent(),/此演示条目|示例释义/);assert.equal(await page.locator('lextide-reader .zh').textContent(),'此处含义未确认');assert.equal(await page.locator('lextide-reader .defs').textContent(),'');assert.match(await page.locator('lextide-reader .sense-status').textContent(),/语境服务暂不可用/);assert.match(await page.locator('lextide-reader .zh-source').textContent(),/当前没有可核对的词典义项/);assert.equal(await page.locator('lextide-reader #save').isDisabled(),true,'unconfirmed failures must not be saved as definitions');
   }else{
    await page.waitForFunction(()=>document.querySelector('lextide-reader').shadowRoot.querySelector('.zh').textContent==='课程',{},{timeout:5000});
    assert.equal(calls.length,failedDictionary?2:3);assert.ok(calls.at(-1).endsWith('/userscript/meaning'));

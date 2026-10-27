@@ -19,7 +19,11 @@ try{
  await page.evaluate(()=>__jobs[0].resolve({word:'bank',lemma:'bank',zh:'迟到释义',senses:[]}));
  await page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
  assert.equal(await card.isVisible(),false);assert.equal(await panel.isVisible(),true);
- await page.locator('lextide-reader #vocabulary').click();await vocab.waitFor({state:'visible'});assert.equal(await panel.isVisible(),false);assert.equal(await page.evaluate(()=>__reader.shadow.activeElement?.id),'vocab-search');
+ await page.locator('lextide-reader #vocabulary').click();await vocab.waitFor({state:'visible'});assert.equal(await panel.isVisible(),false);
+ // Opening the vocabulary avoids the mobile keyboard by focusing its close button.
+ await page.waitForFunction(()=>__reader.shadow.activeElement===__reader.shadow.querySelector('.vocab .close'));
+ assert.equal(await page.evaluate(()=>__reader.shadow.activeElement===__reader.shadow.querySelector('.vocab .close')),true);
+ assert.equal(await page.evaluate(()=>__reader.shadow.activeElement===__reader.shadow.querySelector('#vocab-search')),false);
  await page.evaluate(()=>__reader.openSettings());assert.equal(await vocab.isVisible(),false);assert.equal(await page.evaluate(()=>__reader.shadow.activeElement?.id),'mode');
  await page.keyboard.press('Escape');assert.equal(await panel.isVisible(),false);
  // Finished entries survive settings changes, while staying hidden behind settings.

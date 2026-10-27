@@ -3,7 +3,7 @@
 const formatted=value=>value.normalize('NFKC').trim().replace(/\s*([()])\s*/gu,'$1').replace(/[。.!！]+$/u,'');
 const pairs=new Map([['(',')'],['[',']'],['{','}'],['【','】'],['「','」'],['『','』'],['《','》'],['〈','〉'],['“','”'],['"','"']]);
 const closers=new Set(pairs.values());
-export function matchesDictionaryGloss(meaning,dictionary){
+export function matchesDictionaryGloss(meaning,dictionary,{allowEnumeration=true}={}){
  if(typeof meaning!=='string'||typeof dictionary!=='string')return false;
  const target=formatted(meaning);if(!target)return false;
  if(target===formatted(dictionary))return true;
@@ -13,7 +13,10 @@ export function matchesDictionaryGloss(meaning,dictionary){
   if(stack.length&&char===stack.at(-1)){stack.pop();continue;}
   if(pairs.has(char)){stack.push(pairs.get(char));continue;}
   if(closers.has(char))return false;
-  if(!stack.length&&/[;、]/u.test(char)){aliases.push(text.slice(start,i));start=i+1;}
+  // A Chinese enumeration can share a suffix: 运动、娱乐用的. Its first
+  // fragment is not necessarily a complete meaning. New clients fail closed;
+  // the default preserves provenance behavior of older protocol revisions.
+  if(!stack.length&&(char===';'||allowEnumeration&&char==='、')){aliases.push(text.slice(start,i));start=i+1;}
  }
  if(stack.length)return false;
  aliases.push(text.slice(start));return aliases.some(alias=>target===formatted(alias));

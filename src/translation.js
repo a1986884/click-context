@@ -97,7 +97,7 @@ export class ParagraphTranslator{
   if(pump)void this.pump();
  }
  stop(){this.rememberTextChanges(this.mutations?.takeRecords?.()||[]);this.active=false;this.regions=null;this.moreVisible=false;window.removeEventListener('scroll',this.onScroll,true);window.removeEventListener('resize',this.onResize);clearTimeout(this.resizeTimer);this.resizeTimer=null;clearTimeout(this.scrollTimer);this.scrollTimer=null;this.controller?.abort();this.observer?.disconnect();this.mutations?.disconnect();clearTimeout(this.scanTimer);this.scanTimer=null;this.dirty.clear();for(const r of this.records)this.dispose(r);repairSentenceSources(this.splits,null,this.textChanges);restoreSentenceSplits(this.splits);this.textChanges=new WeakSet();this.records=[];this.pumping=false;}
- summary(){const all=this.records,unit=this.translationUnit==='sentence'?'句':'段',done=all.filter(r=>r.state==='done').length,progress=this.translationUnit==='sentence'?`已翻译 ${done} 句 · 已加载 ${all.length} 句`:`已翻译 ${done} / ${all.length} 段`;this.report(`${progress} · ${all.filter(r=>r.state==='error').length} ${unit}失败${all.some(r=>r.state==='blocked')?' · 等待联网授权':''}${this.online?' · '+this.sourceName:' · 联网关闭（仅示例或缓存）'}${this.translationUnit==='sentence'?' · 随阅读继续翻译':''}${this.rateLimited?(this.pauseReason==='service'?' · 服务暂不可用，后续翻译已暂停；稍后重试':' · 服务限流，后续翻译已暂停；稍后重试'):''}`);}
+ summary(){const all=this.records,unit=this.translationUnit==='sentence'?'句':'段',done=all.filter(r=>r.state==='done').length,progress=this.translationUnit==='sentence'?`已翻译 ${done} 句 · 已加载 ${all.length} 句`:`已翻译 ${done} / ${all.length} 段`,completed=all.filter(r=>r.state==='done'),example=completed.filter(r=>r.translationKind==='example').length,cached=completed.filter(r=>r.translationKind==='cache').length,provider=done-example-cached,source=[example&&`人工示例 ${example} ${unit}`,cached&&`本地缓存（${this.sourceName}） ${cached} ${unit}`,provider&&`${this.sourceName} 服务返回 ${provider} ${unit}`].filter(Boolean).join(' · ')||`当前引擎：${this.sourceName}`;this.report(`${progress} · ${all.filter(r=>r.state==='error').length} ${unit}失败${all.some(r=>r.state==='blocked')?' · 等待联网授权':''}${' · '+source}${this.online?'':' · 联网关闭（仅示例或缓存）'}${this.translationUnit==='sentence'?' · 随阅读继续翻译':''}${this.rateLimited?(this.pauseReason==='service'?' · 服务暂不可用，后续翻译已暂停；稍后重试':' · 服务限流，后续翻译已暂停；稍后重试'):''}`);}
 
 
  layout(change){
@@ -124,7 +124,7 @@ export class ParagraphTranslator{
   if(r.inside){const anchor=r.whole?r.p.lastChild:r.anchor;if(anchor&&r.p.contains(anchor))anchor.after(node);else r.p.append(node);}else r.p.after(node);
   r.node=node;return node;
  }
- render(r,value,source){this.layout(()=>{
+ render(r,value,source,kind='provider'){r.translationKind=kind;this.layout(()=>{
   const node=this.node(r);node.replaceChildren();const text=document.createElement(r.inside?'span':'p');text.className='lextide-translation-text';text.style.margin='0';text.textContent=value;node.append(text);node.dataset.translationSource=source;
   const rich=r.p.querySelector('a,img,picture,video,audio,svg,math,code,iframe,button,input,textarea,select')||[...r.p.querySelectorAll('[role="button"]')].some(e=>!this.demo||!e.dataset.word);
   if(this.mode==='translated'&&r.whole&&!r.inside&&!rich){
@@ -140,7 +140,7 @@ export class ParagraphTranslator{
    const r=this.records.filter(r=>r.eligible&&r.state==='idle').sort((a,b)=>{const distance=r=>{const rect=this.rect(r),height=window.innerHeight||800;return rect?Math.abs((Math.max(0,rect.top)+Math.min(height,rect.bottom))/2-height/2):0;};return distance(a)-distance(b);})[0];if(!r){if(this.moreVisible){this.refresh([this.root],false,true);continue;}break;}
    const requestSignal=AbortSignal.any([signal,r.controller.signal]);r.state='loading';
    try{
-    let value=this.demo&&r.whole?r.p.dataset.translation:null,fresh=false;let source='词汐 · 人工示例译文';
+    let value=this.demo&&r.whole?r.p.dataset.translation:null,fresh=false;let kind=value?'example':'cache',source='词汐 · 人工示例译文';
     if(!value){try{value=await abortable(this.store.cacheGet(r.text,cacheNamespace),requestSignal);}catch{requestSignal.throwIfAborted();value=null;}source='本地缓存 · '+sourceName+' 翻译';}
     if(!requestSignal.aborted)this.flushChanges();requestSignal.throwIfAborted();
     if(!this.current(r,requestSignal)){this.refresh([this.root],false);continue;}
@@ -154,9 +154,9 @@ export class ParagraphTranslator{
      if(!requestSignal.aborted)this.flushChanges();
      if(!this.current(r,requestSignal)){if(!requestSignal.aborted)this.refresh([this.root],false);continue;}
      if(typeof value!=='string'||!value.trim())throw Error('服务未返回有效译文');
-     source=sourceName+' · 机器翻译';fresh=true;
+     source=sourceName+' · 机器翻译';kind='provider';fresh=true;
     }
-    if(!this.current(r,requestSignal)){if(!requestSignal.aborted)this.refresh([this.root],false);continue;}r.state='done';this.render(r,value,source);
+    if(!this.current(r,requestSignal)){if(!requestSignal.aborted)this.refresh([this.root],false);continue;}r.state='done';this.render(r,value,source,kind);
     // Persistence is optional: display the valid result first, and stop waiting
     // when this reading session is cancelled. A late write cannot update its UI.
     if(fresh)try{await abortable(Promise.resolve().then(()=>{

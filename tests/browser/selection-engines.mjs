@@ -20,6 +20,14 @@ try{
   await page.setContent('<main style="max-width:720px;margin:24px auto;padding:16px;font:20px/1.8 Georgia"><p id="p1">Alpha has a value of 12.5 with a <a id="link" href="https://example.test/reference">reference</a>.</p><p id="p2">Beta also has a value of 12.5.</p><p id="long">The measured value is 12.5. This selection includes punctuation and more than four words, so it must use the separate translation action.</p></main>');await page.evaluate(bundle.outputFiles[0].text);await page.evaluate(()=>__reader.ready);
   const select=async id=>{await page.evaluate(id=>{const r=document.createRange();r.selectNodeContents(document.getElementById(id));getSelection().removeAllRanges();getSelection().addRange(r);},id);await page.locator('lextide-reader #translate-selection').waitFor({state:'visible'});};
   const waitResult=text=>page.locator('lextide-reader #selection-result').filter({hasText:text}).waitFor();
+  // Engine reconfiguration restarts translation asynchronously. Wait for the
+  // completed status, and verify both engine identity and actual provenance.
+  const checkProgress=async(pattern,message)=>{
+   const status=page.locator('lextide-reader #status');
+   // The settings panel may be closed while its status continues updating.
+   await status.filter({hasText:pattern}).waitFor({state:'attached'});
+   assert.match(await status.textContent(),pattern,message);
+  };
   await select('long');assert.equal(await page.locator('lextide-reader #lookup-selection').isVisible(),false);assert.equal(await page.evaluate(()=>__calls.length),0);
   await page.evaluate(()=>__reader.shadow.querySelector('#translate-selection').click());assert.equal(await page.evaluate(()=>__calls.length),0,'a page-synthesized click cannot send selected text');
   await page.locator('lextide-reader #translate-selection').click();await waitResult('选文甲译文');assert.equal(await page.evaluate(()=>__calls.at(-1).type),'selection');assert.equal(await page.evaluate(()=>__calls.at(-1).engineKey),'engine:selection:a');assert.match(await page.locator('lextide-reader #selection-provider').textContent(),/Selection A/);
@@ -32,17 +40,17 @@ try{
   await select('long');await page.locator('lextide-reader #translate-selection').click();await waitResult('选文乙译文');
   // Engine switching isolates source caches and preserves the original link.
   await page.evaluate(()=>__reader.setBilingual(true));await page.waitForFunction(()=>document.querySelectorAll('.lextide-translation-text').length===3);const firstBodyCalls=await page.evaluate(()=>__calls.filter(c=>c.type==='translate').length);assert.equal(firstBodyCalls,3);
-  assert.match(await page.locator('lextide-reader #status').textContent(),/已翻译 3 \/ 3 段.* · Body A$/,'progress must name the selected body engine');
+  await checkProgress(/已翻译 3 \/ 3 段 · 0 段失败 · Body A 服务返回 3 段$/,'progress must name the selected body engine and service provenance');
   await page.evaluate(()=>{__engines={...__engines,body:{id:'body-b',label:'Body B',cacheKey:'engine:body:b',minInterval:1}};return __reader.configureEngines(__engines);});await page.waitForFunction(()=>document.querySelectorAll('[data-translation-source="Body B · 机器翻译"]').length===3);assert.equal(await page.evaluate(()=>__calls.filter(c=>c.type==='translate').length),6);
-  assert.match(await page.locator('lextide-reader #status').textContent(),/ · Body B$/);
+  await checkProgress(/已翻译 3 \/ 3 段 · 0 段失败 · Body B 服务返回 3 段$/,'switched body progress names the new engine');
   await page.evaluate(()=>{__engines={...__engines,body:{id:'body-a',label:'Body A',cacheKey:'engine:body:a',minInterval:1}};return __reader.configureEngines(__engines);});await page.waitForFunction(()=>document.querySelectorAll('[data-translation-source="本地缓存 · Body A 翻译"]').length===3);assert.equal(await page.evaluate(()=>__calls.filter(c=>c.type==='translate').length),6);
-  assert.match(await page.locator('lextide-reader #status').textContent(),/ · Body A$/,'cached body progress retains the matching engine');
-  await page.evaluate(()=>__reader.setTranslationUnit('sentence'));assert.match(await page.locator('lextide-reader #status').textContent(),/已翻译 4 句.* · Body A · 随阅读继续翻译$/);
+  await checkProgress(/已翻译 3 \/ 3 段 · 0 段失败 · 本地缓存（Body A） 3 段$/,'cached body progress retains the matching engine and cache provenance');
+  await page.evaluate(()=>__reader.setTranslationUnit('sentence'));await checkProgress(/已翻译 4 句 · 已加载 4 句 · 0 句失败 · 本地缓存（Body A） 2 句 · Body A 服务返回 2 句 · 随阅读继续翻译$/,'sentence progress retains the matching engine and service provenance');
   await page.evaluate(()=>__reader.setTranslationUnit('paragraph'));
   await page.evaluate(()=>{__bodyFailure=true;__engines={...__engines,body:{id:'body-c',label:'Body C',cacheKey:'engine:body:c',minInterval:1}};return __reader.configureEngines(__engines);});
-  assert.match(await page.locator('lextide-reader #status').textContent(),/1 段失败 · Body C · 服务暂不可用/,'paused errors must name the failed engine');
+  await checkProgress(/1 段失败 · 当前引擎：Body C · 服务暂不可用/,'paused errors must name the failed engine');
   await page.evaluate(()=>{__bodyFailure=false;__engines={...__engines,body:{id:'body-a',label:'Body A',cacheKey:'engine:body:a',minInterval:1}};return __reader.configureEngines(__engines);});
-  assert.match(await page.locator('lextide-reader #status').textContent(),/已翻译 3 \/ 3 段.* · Body A$/);
+  await checkProgress(/已翻译 3 \/ 3 段 · 0 段失败 · 本地缓存（Body A） 3 段$/,'returning to the prior engine uses its isolated cache');
   await page.evaluate(()=>__reader.setBilingual(false));assert.equal(await page.evaluate(()=>document.querySelector('main').innerHTML===__source&&document.querySelector('#link')===__link),true);
   await page.evaluate(()=>{__hold=true;__released=null;});await select('long');await page.locator('lextide-reader #translate-selection').click();await page.waitForFunction(()=>typeof __released==='function');await page.evaluate(()=>__reader.setWords(false));await page.evaluate(()=>{__hold=false;__released('停止后不可显示');});assert.equal(await page.locator('lextide-reader .selection-card').isVisible(),false);assert.equal(await page.locator('lextide-reader #translate-selection').isVisible(),false);
   await page.evaluate(()=>__reader.setWords(true));await page.evaluate(()=>__failure=true);await select('long');await page.locator('lextide-reader #translate-selection').click();await page.locator('lextide-reader #retry-selection').waitFor({state:'visible'});await page.evaluate(()=>__failure=false);await page.locator('lextide-reader #retry-selection').click();await waitResult('选文乙译文');

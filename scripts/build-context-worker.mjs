@@ -1,6 +1,6 @@
 // Build a public Worker artifact and provenance; no credentials are read.
 import {build} from 'esbuild';import {readFile,mkdir,writeFile} from 'node:fs/promises';import {createHash} from 'node:crypto';import {sourceState} from './build-evidence.mjs';
-const pkg=JSON.parse(await readFile('package.json')),config=JSON.parse(await readFile('workers/context/wrangler.jsonc'));
+const pkg=JSON.parse(await readFile('package.json')),config=JSON.parse(await readFile(process.argv[2]||'workers/context/wrangler.jsonc'));
 await mkdir('build/context-worker',{recursive:true});
 await build({entryPoints:['workers/context/index.js'],bundle:true,format:'esm',outfile:'build/context-worker/worker.mjs'});
 const bytes=await readFile('build/context-worker/worker.mjs'),source=sourceState();

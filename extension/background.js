@@ -109,7 +109,7 @@ async function handleMessage(m,sender,controller,job){
  if(m.type==='open-controls'&&content){if(!chrome.action?.openPopup)throw Error('请点击浏览器工具栏中的点击语境查词图标，开启此网站联网查询。');await chrome.action.openPopup({windowId:sender.tab.windowId});return null;}
  if(m.type==='open-vocabulary'&&content){await chrome.tabs.create({url:chrome.runtime.getURL('vocabulary.html')});return null;}
  if(m.type==='store'){
-  const allowed=ui?['words','removeWord','importWords']:['prefs','savePrefs','words','saveWord','removeWord','cacheGet','cacheSet','clearCache'];
+  const allowed=ui?['words','removeWord','updateWord','vocabularyDrafts','saveVocabularyDraft','removeVocabularyDraft','importWords']:['prefs','savePrefs','words','saveWord','removeWord','cacheGet','cacheSet','clearCache'];
   if(!allowed.includes(m.op)||!Array.isArray(m.args))throw Error('无效存储请求');
   const payload=JSON.stringify(m.args),importing=ui&&m.op==='importWords',limit=importing?BACKUP_FILE_LIMIT+2:50000;
   if(payload.length>limit||importing&&new TextEncoder().encode(payload).byteLength>limit)throw Error('无效存储请求');

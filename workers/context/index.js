@@ -1,5 +1,6 @@
+import {contextReviewPrompt,contextReviewOutputLimit,parseContextReview,CONTEXT_STAGE_OUTPUT_LIMIT} from '../../src/context-review.js';
 import {cleanTranslation,translationPrompt,translationModel,translationOutputLimit,parseTranslationResult,TRANSLATION_MODEL,TRANSLATION_CURRENT_MODEL,TRANSLATION_CACHE_VERSION,TRANSLATION_LEGACY_CACHE_VERSION,TRANSLATION_ACCEPTED_CACHE_VERSIONS,TRANSLATION_VALIDATION_REASONS,TRANSLATION_INCOMPLETE_REASONS} from '../../src/translation-service.js';
-import {cleanContext,contextPrompt,parseContextResult,CONTEXT_MODEL,CONTEXT_VALIDATION_REASONS,CONTEXT_CURRENT_REVISION} from '../../src/context-meaning.js';
+import {cleanContext,contextPrompt,parseContextResult,CONTEXT_MODEL,CONTEXT_VALIDATION_REASONS,CONTEXT_CURRENT_REVISION,CONTEXT_ACCEPTED_REVISIONS} from '../../src/context-meaning.js';
 const CONTEXT_INFERENCE_TIMEOUT_MS=16000;
 const TRANSLATION_INFERENCE_TIMEOUT_MS=16000;
 const TRANSLATION_FAILURE_REASONS=['cancelled','timeout','inference','invalid-result','capacity'];
@@ -31,7 +32,7 @@ export default {async fetch(request,env){
  const headers={'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Vary':'Origin',...(allowed&&(origin||userscript)?{'Access-Control-Allow-Origin':userscript?'*':origin,'Access-Control-Allow-Headers':'Content-Type','Access-Control-Allow-Methods':'POST, OPTIONS'}:{})};
  const reply=(body,status=200)=>Response.json(body,{status,headers});
  if(!allowed)return reply({ok:false,error:'来源不受支持'},403);
- if(new URL(request.url).pathname==='/health')return reply({ok:true,model:CONTEXT_MODEL,version:'ai-context-v3',currentContextRevision:CONTEXT_CURRENT_REVISION,acceptedContextRevisions:['ai-context-v3',CONTEXT_CURRENT_REVISION],contextInferenceTimeoutMs:CONTEXT_INFERENCE_TIMEOUT_MS,contextFailureCodes:true,contextValidationReasons:CONTEXT_VALIDATION_REASONS,translation:{model:TRANSLATION_MODEL,currentModel:TRANSLATION_CURRENT_MODEL,version:'ai-translation-v1',cacheVersion:TRANSLATION_CACHE_VERSION,defaultCacheVersion:TRANSLATION_LEGACY_CACHE_VERSION,acceptedCacheVersions:TRANSLATION_ACCEPTED_CACHE_VERSIONS,inferenceTimeoutMs:TRANSLATION_INFERENCE_TIMEOUT_MS,failureReasons:TRANSLATION_FAILURE_REASONS,validationReasons:TRANSLATION_VALIDATION_REASONS,incompleteReasons:TRANSLATION_INCOMPLETE_REASONS}});
+ if(new URL(request.url).pathname==='/health')return reply({ok:true,model:CONTEXT_MODEL,version:'ai-context-v3',currentContextRevision:CONTEXT_CURRENT_REVISION,acceptedContextRevisions:CONTEXT_ACCEPTED_REVISIONS,contextInferenceTimeoutMs:CONTEXT_INFERENCE_TIMEOUT_MS,contextFailureCodes:true,contextValidationReasons:CONTEXT_VALIDATION_REASONS,translation:{model:TRANSLATION_MODEL,currentModel:TRANSLATION_CURRENT_MODEL,version:'ai-translation-v1',cacheVersion:TRANSLATION_CACHE_VERSION,defaultCacheVersion:TRANSLATION_LEGACY_CACHE_VERSION,acceptedCacheVersions:TRANSLATION_ACCEPTED_CACHE_VERSIONS,inferenceTimeoutMs:TRANSLATION_INFERENCE_TIMEOUT_MS,failureReasons:TRANSLATION_FAILURE_REASONS,validationReasons:TRANSLATION_VALIDATION_REASONS,incompleteReasons:TRANSLATION_INCOMPLETE_REASONS}});
  const translating=path==='/translate'||path==='/userscript/translate';
  if(!translating&&path!=='/meaning'&&path!=='/userscript/meaning')return reply({ok:false,error:'Not found'},404);
  if(request.method==='OPTIONS')return new Response(null,{status:204,headers});
@@ -64,7 +65,12 @@ export default {async fetch(request,env){
  const signal=AbortSignal.any([request.signal,AbortSignal.timeout(CONTEXT_INFERENCE_TIMEOUT_MS)]),started=Date.now();
  for(let attempt=0;attempt<2;attempt++){
   let validating=false;
-  try{const raw=await inference(()=>env.AI.run(CONTEXT_MODEL,contextPrompt(input),{signal,...(input.contextRevision===CONTEXT_CURRENT_REVISION?{rejectIfBusy:true}:{})}),signal);signal.throwIfAborted();validating=true;return reply({ok:true,data:parseContextResult(raw,input)});}
+  try{
+   const reviewing=input.contextRevision==='ai-context-v5',prompt=contextPrompt(input);if(reviewing)prompt.max_output_tokens=CONTEXT_STAGE_OUTPUT_LIMIT;
+   const raw=await inference(()=>env.AI.run(CONTEXT_MODEL,prompt,{signal,...(['ai-context-v4','ai-context-v5',CONTEXT_CURRENT_REVISION].includes(input.contextRevision)?{rejectIfBusy:true}:{})}),signal);signal.throwIfAborted();validating=true;let meaning=parseContextResult(raw,input);
+   if(reviewing){validating=false;const checked=await inference(()=>env.AI.run(CONTEXT_MODEL,contextReviewPrompt(input,meaning,{outputLimit:contextReviewOutputLimit(raw)}),{signal,rejectIfBusy:true}),signal);signal.throwIfAborted();validating=true;meaning=parseContextReview(checked,input,meaning);}
+   return reply({ok:true,data:meaning});
+  }
   catch(error){
    if(!validating&&!signal.aborted&&quotaError(error))return reply(contextErrorBody('CONTEXT_QUOTA_EXCEEDED'),503);
    if(!validating&&!signal.aborted&&capacityError(error))return reply(contextErrorBody('CONTEXT_BUSY'),503);

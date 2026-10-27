@@ -1,8 +1,9 @@
 import {lookupCollinsBilingual as lookupCollins} from '../src/collins-bilingual.js';
+import {previewConnectOrigins} from './preview-context-config.mjs';
 // Small, temporary Pages previews can carry their public files in a Worker.
 // Normal production output remains static dist/; this handler needs no bindings.
-export function createPreviewWorker(files,{dictionary=lookupCollins}={}){
- const policy="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://lextide-context.aa1986884.workers.dev; frame-ancestors 'none'; base-uri 'self'; object-src 'none'";
+export function createPreviewWorker(files,{dictionary=lookupCollins,contextOrigin}={}){
+ const policy="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' "+previewConnectOrigins(contextOrigin)+"; frame-ancestors 'none'; base-uri 'self'; object-src 'none'";
  return {async fetch(request){
   const headers=new Headers({'Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','Content-Security-Policy':policy});
   if(!['GET','HEAD'].includes(request.method)){headers.set('Allow','GET, HEAD');return new Response('Method not allowed',{status:405,headers});}

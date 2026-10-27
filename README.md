@@ -1,27 +1,28 @@
 # 点击语境查词 · Click Context
 
+> 当前源码为 **0.7.161 用户体验候选**：[打开独立预览](https://afa8efac.lextide.pages.dev/)。999 项本地测试通过。本轮优化慢存储下的草稿写入、未暂存输入的离开提醒和输入法收尾，阻止关闭后的迟到事件重新创建旧稿。已实际验证取消、保存和刷新恢复；手机强杀与 iPhone 真机未验收。原生 0.7.98 保留，未上传 GitHub，AI 后端和提示词未改。见[本轮验证记录](docs/diagnostics/2026-10-26-slow-draft-writes.zh-CN.md)。
+
 **点一下单词，看懂它在这句话里的意思。**
 
-> 当前源码候选为 0.7.132：修复主开关重开后丢失双语/译文组合，并合入安全错误分类与拒绝后暂停队列；设置中关闭正文翻译保留面板，释义卡片明确显示额度与不完整原因。原生/package 仍为 0.7.98。当前预览和内置 AI 的真实验证单独记录，不能把以下 0.7.129 历史结果当成本版验收；未更新公开脚本安装页。
 
 源码仓库：[a1986884/click-context](https://github.com/a1986884/click-context) · [本次源码导入与历史恢复](SOURCE_IMPORT.md)
 
 一个面向英文网页阅读的开源浏览器扩展。点击单词或划选短语，结合当前原句查看此处含义；保留 Collins 词典原义供对照，并把这次词义连同原句收藏下来。也支持选文翻译和网页双语阅读。
 
-[体验交互预览](https://v04-preview.lextide.pages.dev/) · [查看 API 设置界面](https://v04-preview.lextide.pages.dev/engines-preview.html) · [安装与构建](docs/INSTALL.md) · [引擎与自带 API](docs/TRANSLATION_ENGINES.zh-CN.md) · [隐私说明](docs/PRIVACY.md) · [版本记录](docs/ITERATIONS.md) · [参与开发](CONTRIBUTING.md)
+[体验当前候选预览](https://afa8efac.lextide.pages.dev/) · [安装与构建](docs/INSTALL.md) · [引擎与自带 API](docs/TRANSLATION_ENGINES.zh-CN.md) · [隐私说明](docs/PRIVACY.md) · [版本记录](docs/ITERATIONS.md) · [参与开发](CONTRIBUTING.md)
 
 另有 [Tampermonkey 用户脚本试用版](userscript/README.zh-CN.md)（[安装页](https://click-context-install.aa1986884.workers.dev/)），本地开发版新增点击语境 AI 选择，另有正文/选文独立引擎、自带 API 和连接诊断。安装方式与扩展不同，实际 iPhone 管理器兼容性仍待验收。
 
-本轮交付状态：
+当前开发与交付状态：
 
 | 入口 | 版本 | 已知状态 |
 | --- | --- | --- |
-| 公开用户脚本安装页 | 0.7.110 | 本轮下载核对仍为此版本 |
-| 当前开发用户脚本 | 0.7.132 | 主开关配置保留、错误分类和队列暂停；849项本地单元/契约通过；仍为候选 |
+| 公开用户脚本安装页 | 本轮未重查 | 此前记录为 0.7.110；本轮未更新或重新验收 |
+| 当前开发用户脚本 | 0.7.161 | 999 项本地测试通过，仍为候选，未上传 GitHub |
 | 原生发布 | 0.7.98 | 独立保留，没有发布原生新包 |
-| 在线预览 | package 0.7.98，共享阅读器已更新 | 已验证开关恢复及六个固定语境样例；不等于原生或 iPhone 验收 |
+| 独立网页预览 | 0.7.161 | 取消、保存和刷新恢复已实际验证；不等于原生或 iPhone 验收 |
 
-本轮记录见 [预览修复](docs/diagnostics/2026-10-24-preview-repair.zh-CN.md) 和 [容量错误排查](docs/diagnostics/2026-10-24-capacity-followup.zh-CN.md)。当前模型、提示词和 900 token 预算保持不变，历史 503 根因尚未确认，词义仍可能波动。公开安装页未更新。
+本轮没有修改 AI 模型、提示词或后端；存储和输入法测试不代表语境质量验收。历史记录见[冲突双方自动保留](docs/diagnostics/2026-10-26-conflict-copies.zh-CN.md)、[草稿快照检查](docs/diagnostics/2026-10-26-draft-conflicts.zh-CN.md)、[撤销和小屏改进](docs/diagnostics/2026-10-26-ux-continuation.zh-CN.md)、[草稿恢复](docs/diagnostics/2026-10-25-draft-recovery.zh-CN.md)与[早期体验记录](docs/diagnostics/2026-10-25-ux.zh-CN.md)。早期[预览修复](docs/diagnostics/2026-10-24-preview-repair.zh-CN.md)、[容量错误排查](docs/diagnostics/2026-10-24-capacity-followup.zh-CN.md)、[自主恢复](docs/diagnostics/2026-10-25-autonomous.zh-CN.md)和[未执行的提示词对照准备](docs/diagnostics/2026-10-25-specificity-experiment.zh-CN.md)均保留，不作为当前语义验收。
 
 以下保留为 0.7.129 的历史交接结果：
 

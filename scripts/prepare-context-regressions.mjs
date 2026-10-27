@@ -1,0 +1,7 @@
+import {execFile} from 'node:child_process';import {promisify} from 'node:util';import {writeFile,mkdir} from 'node:fs/promises';import {contextSamples,classStabilitySamples} from '../tests/live/context-gloss-cases.mjs';import {cleanContext} from '../src/context-meaning.js';import {phraseAt,phraseLemma} from '../src/phrases.js';
+const run=promisify(execFile),samples=[...contextSamples,...classStabilitySamples.slice(2)],dicts=new Map(),rows=[];await mkdir('test-results/semantic-regressions',{recursive:true});
+for(const [i,sample]of samples.entries()){const [word,sentence,expected,occurrence=0,,forbidden]=sample,tokens=[...sentence.matchAll(new RegExp('\\b'+word+'\\b','gi'))],offset=tokens[occurrence].index,phrase=phraseAt(sentence,offset,word),queried=phrase?.word||word,at=phrase?.offset??offset,lemma=phraseLemma(queried);
+ if(!dicts.has(lemma)){const {stdout}=await run('curl',['-sS','--max-time','30','--max-filesize','300000','https://v04-preview.lextide.pages.dev/api/dictionary?'+new URLSearchParams({word:lemma})],{maxBuffer:500000});const r=JSON.parse(stdout);dicts.set(lemma,r.ok?r.data.senses:[]);}
+ rows.push({id:'regression-'+i,word,sentence,expected,forbidden,input:cleanContext({word:queried,sentence,offset:at,senses:dicts.get(lemma),contextRevision:'ai-context-v5'})});console.log('Prepared '+i);
+}
+await writeFile('test-results/semantic-regressions/cohort.json',JSON.stringify(rows));console.log('Prepared '+rows.length+' original regression cases');

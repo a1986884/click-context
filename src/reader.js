@@ -1,19 +1,19 @@
 import {phraseAt,phraseLemma} from './phrases.js';
 import {matchesDictionaryGloss} from './context-gloss.js';
-import {vocabularyKey} from './vocabulary-data.js';
+import {vocabularyKey,isVocabularyLemma,vocabularyOccurrence} from './vocabulary-data.js';
 import {mountVocabulary} from './vocabulary-view.js';
 import {lookup,translate,wordAt} from './core.js';
 import {demoStore,DEFAULT_PREFS} from './storage.js';
 import {ParagraphTranslator} from './translation.js';
 import {readerCSS} from './reader-style.js';
-import {visibleViewport,dictionaryBounds,movableBounds} from './viewport.js';
-import {parseContextResult,resolveContext} from './context-meaning.js';
+import {visibleViewport,dictionaryBounds,movableBounds,auxiliaryPanelBounds} from './viewport.js';
+import {parseContextResult,resolveContext,CONTEXT_ACCEPTED_REVISIONS} from './context-meaning.js';
 import {proseBlock,proseSnapshot,selectedContext,sentenceContext,snapshotContext} from './selection-context.js';
 import {readableSelection} from './selection-translation.js';
 import {publicEngineSettings} from './engine-profiles.js';
 export function sentenceAt(text,word,offset=text.toLowerCase().indexOf(word.toLowerCase())){return sentenceContext(text,offset,word.length).sentence;}
 function readablePOS(pos=''){return /^N(?:-|$)/.test(pos)?'名词':/^V(?:-|$)/.test(pos)?'动词':/^ADJ/.test(pos)?'形容词':/^ADV/.test(pos)?'副词':pos==='PHRASE'?'短语':pos;}
-export function mountReader({root=document.body,transport=async(type,text,online,options)=>type==='lookup'?lookup(text,{online,...options}):type==='context'?resolveContext(options.context,options):translate(text,fetch,options),demo=false,store=demoStore(),schedulerOptions={},onOpenVocabulary,onOpenEngines,onOpenContextEngines,isAuxiliaryUIEvent=()=>false,engines=publicEngineSettings(),dictionaryNotice='Collins 英汉双解（有道公开词条）'}={}){
+export function mountReader({root=document.body,transport=async(type,text,online,options)=>type==='lookup'?lookup(text,{online,...options}):type==='context'?resolveContext(options.context,options):translate(text,fetch,options),demo=false,store=demoStore(),schedulerOptions={},contextRevision,onOpenVocabulary,onOpenEngines,onOpenContextEngines,isAuxiliaryUIEvent=()=>false,engines=publicEngineSettings(),dictionaryNotice='Collins 英汉双解（有道公开词条）'}={}){
  const host=document.createElement('lextide-reader');document.body.append(host);const shadow=host.attachShadow({mode:'open'});
  shadow.innerHTML=`<style>${readerCSS}</style>
  <section class="panel" hidden role="dialog" aria-label="点击语境查词阅读设置"><div class="top"><b>点击语境查词 · 阅读设置</b><button class="close" aria-label="关闭设置">×</button></div>
@@ -28,17 +28,22 @@ export function mountReader({root=document.body,transport=async(type,text,online
  <div class="dict-handle" tabindex="0" role="group" aria-label="移动查词卡片，可拖动或用方向键移动"><span class="card-brand"><span aria-hidden="true">⠿</span> 点击语境查词 <span class="drag-hint">拖动小窗</span></span><div class="card-controls"><button id="collapse-dict" aria-label="收起释义" aria-expanded="true" title="收起，继续阅读">−</button><button class="close" aria-label="关闭释义" title="关闭（Esc）">×</button></div></div>
  <div class="mini-result" hidden><strong class="mini-word"></strong><span class="mini-meaning"></span></div>
  <div class="dict-title"><div class="word-heading"><h2 class="word"></h2><button id="speak" title="朗读单词" aria-label="朗读单词">朗读</button></div><div class="word-meta"><span class="phonetic muted"></span><span class="dictionary-label"></span></div></div><div class="dict-body">
- <div class="context-focus"><p class="sentence"></p><p class="zh" role="status"></p><p class="sense-status muted" role="status"></p></div><label class="sense-picker" hidden><span class="sr-only">查看其他义项</span><select id="sense-choice" aria-label="Collins 义项"></select></label><div class="defs"></div>
+ <div class="context-focus"><p class="sentence"></p><p class="zh" role="status"></p><p class="sense-status muted" role="status"></p></div><label class="sense-picker" hidden><span class="sense-picker-label">选择词典原义</span><select id="sense-choice" aria-label="Collins 义项"></select></label><div class="defs"></div>
  <details class="entry-details"><summary>来源与词条详情</summary><small class="zh-source"></small><p class="morphology muted"></p><p class="related muted"></p><p class="source muted"></p></details></div>
- <div class="dict-actions"><button id="save">收藏</button><button id="retry" hidden>重试</button><button id="context-engine-settings" hidden>语境 AI 设置</button><button id="reset-dict" hidden title="恢复自动摆放">自动位置</button></div></section>
+ <p id="save-hint" class="save-hint" hidden></p><div class="dict-actions"><button id="save">收藏</button><button id="retry" hidden>重试</button><button id="context-engine-settings" hidden>语境 AI 设置</button><button id="reset-dict" hidden title="恢复自动摆放">自动位置</button></div></section>
  <section class="vocab" role="dialog" aria-label="我的生词本" hidden><div class="top"><b>我的生词本</b><button class="close" aria-label="关闭生词本">×</button></div></section>
  <section class="selection-card" hidden role="dialog" aria-label="选文翻译"><div class="top"><b>选文翻译</b><button id="close-selection" aria-label="关闭选文翻译">×</button></div><p id="selection-provider" class="muted"></p><p id="selection-original"></p><p id="selection-result" role="status" aria-live="polite"></p><button id="retry-selection" hidden>重试选文翻译</button></section>
  <button id="lookup-selection" class="selection-action" hidden>查词 / 短语</button><button id="translate-selection" class="selection-action" hidden>翻译选文</button><div class="tool-dock"><button class="bubble" aria-label="切换点击查词" aria-expanded="false" aria-pressed="false" title="点击开关查词；长按设置">查词</button></div>`;
  shadow.querySelector('.dictionary-notice').textContent=dictionaryNotice;
  const $=s=>shadow.querySelector(s),bubble=$('.bubble');let prefs={...DEFAULT_PREFS,online:true},destroyed=false,requestId=0,active='',lastFocus=null,lookupController=null,lastEntry=null,context='',cardPoint=null,contextOffset=null,pendingSelection=null,manualPosition=null,drag=null,selectionFrame=null;
- let lookupInFlight=null,pausedFeatures=null,toggleQueue=Promise.resolve();
+ let lookupInFlight=null,pausedFeatures=null,toggleQueue=Promise.resolve(),contentRevision=0;
  let saveFailure=null,favoriteResumeQueued=false,saveReady=false,savedRevision=0,savedKeys=new Set();const savingKeys=new Set();
- function renderSave(){const key=lastEntry?vocabularyKey(lastEntry):null,pending=key&&savingKeys.has(key);$('#save').disabled=!saveReady||!lastEntry?.zh||Boolean(pending);$('#save').textContent=pending?'保存中…':key&&savedKeys.has(key)?'已收藏':'收藏';}
+ function renderSave(){
+  const key=lastEntry?vocabularyKey(lastEntry):null,pending=key&&savingKeys.has(key),saved=key&&savedKeys.has(key),candidate=/候选含义（未确认）/.test(lastEntry?.dictionarySource||'');
+  $('#save').disabled=!saveReady||!lastEntry?.zh||Boolean(pending);$('#save').textContent=pending?'保存中…':saved?'已收藏':candidate?'收藏候选':'收藏';
+  const canChoose=[...$('#sense-choice').options].some(o=>o.value&&!o.disabled),hint=saveReady&&!lastEntry?.zh?(canChoose?'先选择一个词典义项，再收藏这次用法。':'暂未获得可收藏的释义。'):saveReady&&candidate&&!saved?'收藏时会保留“未确认”标记，稍后可在生词本核对。':'';
+  $('#save-hint').textContent=hint;$('#save-hint').hidden=!hint||$('.dict').classList.contains('is-collapsed');if(hint)$('#save').setAttribute('aria-describedby','save-hint');else $('#save').removeAttribute('aria-describedby');
+ }
  async function refreshSaved(id){const revision=savedRevision;try{const words=await store.words();if(destroyed||id!==requestId||revision!==savedRevision)return;savedKeys=new Set(words.map(vocabularyKey));renderSave();}catch{/* Favorite status is optional; a read failure must not hide dictionary results. */}}
  function resumeFavorites(){
   if(destroyed||($('.dict').hidden||!lastEntry)&&$('.vocab').hidden)return;
@@ -66,11 +71,25 @@ export function mountReader({root=document.body,transport=async(type,text,online
   translator.cacheNamespace=next.body.cacheKey;translator.sourceName=next.body.label;if(!('interval' in schedulerOptions))translator.interval=next.body.minInterval;engineLabels();
   if(changed&&restart)void apply();
  }
- const persist=()=>store.savePrefs(prefs).catch(()=>report('偏好无法保存，本页仍可使用。'));
+ let preferenceRevision=0,preferenceWrite=Promise.resolve(),bodyPolicyPending=false,lookupPolicyPending=false,applyRevision=0;
+ const persist=()=>{const revision=++preferenceRevision,snapshot={...prefs};return preferenceWrite=Promise.resolve().then(()=>store.savePrefs(snapshot)).catch(()=>{if(!destroyed&&revision===preferenceRevision)report('偏好无法保存，本页仍可使用。');});};
+ async function sendAfterPreferences(type,text,online,options){
+  const signal=options?.signal;if(!lookupPolicyPending){signal?.throwIfAborted();return transport(type,text,online,options);}let write;
+  do{
+   signal?.throwIfAborted();write=preferenceWrite;
+   await new Promise((resolve,reject)=>{
+    let done=false;const finish=(fn,value)=>{if(done)return;done=true;signal?.removeEventListener('abort',cancel);fn(value);};
+    const cancel=()=>finish(reject,signal.reason??new DOMException('已取消','AbortError'));
+    signal?.addEventListener('abort',cancel,{once:true});write.then(()=>finish(resolve),error=>finish(reject,error));if(signal?.aborted)cancel();
+   });
+  }while(write!==preferenceWrite);
+  signal?.throwIfAborted();lookupPolicyPending=false;return transport(type,text,online,options);
+ }
  function bubbleSpace(){const v=visibleViewport(window);return {left:v.left+12,top:v.top+12,width:Math.max(0,v.width-76),height:Math.max(0,v.height-76)};}
  function position(){
   if(prefs.bubblePosition){const v=bubbleSpace(),p=prefs.bubblePosition;host.style.cssText=`position:fixed;z-index:2147483647;left:${v.left+p.x*v.width}px;top:${v.top+p.y*v.height}px`;}
   else host.style.cssText=`position:fixed;z-index:2147483647;${prefs.side}:max(12px,env(safe-area-inset-${prefs.side},0px));bottom:calc(20px + env(safe-area-inset-bottom,0px))`;
+  const bounds=auxiliaryPanelBounds(visibleViewport(window),window.innerHeight);if(bounds){host.style.setProperty('--reader-panel-bottom',bounds.bottom+'px');host.style.setProperty('--reader-panel-max-height',bounds.maxHeight+'px');}
  }
  function moveBubble(left,top){const v=bubbleSpace();prefs.bubblePosition={x:v.width?Math.max(0,Math.min(1,(left-v.left)/v.width)):0,y:v.height?Math.max(0,Math.min(1,(top-v.top)/v.height)):0};position();}
 
@@ -78,12 +97,22 @@ export function mountReader({root=document.body,transport=async(type,text,online
  function closeSettings(){$('.panel').hidden=true;bubble.setAttribute('aria-expanded','false');}
  function openSettings(){if(destroyed)return;closeSelection();if(!saveReady)close();$('.panel').hidden=false;$('.vocab').hidden=true;bubble.setAttribute('aria-expanded','true');$('#mode').focus({preventScroll:true});if(pausedFeatures)report('总开关已暂停，设置已保留；点击小球恢复。');}
  function close({restoreFocus=false}={}){lookupInFlight=null;requestId++;lookupController?.abort();closeSelection();stopDrag();$('.dict').hidden=true;$('#lookup-selection').hidden=true;$('#translate-selection').hidden=true;pendingSelection=null;cancelSelectionFrame();if(restoreFocus){if(lastFocus?.isConnected)lastFocus.focus?.({preventScroll:true});if(!lastFocus?.isConnected||document.activeElement!==lastFocus)bubble.focus({preventScroll:true});}}
- async function apply(){translator.stop();update();if(prefs.enabled&&prefs.mode!=='original')await translator.start(prefs.mode,prefs.online,prefs.translationUnit);else report('原文模式 · '+(prefs.words?'查词开启，链接不跳转':'查词关闭，链接正常'));}
+ async function apply(){
+  const revision=++applyRevision;translator.stop();update();
+  if(prefs.enabled&&prefs.mode!=='original'&&bodyPolicyPending){
+   // A resumed extension must save its background policy before requesting text.
+   // Keep this wait outside the main-switch queue so another pause stays immediate.
+   let write;do{write=preferenceWrite;await write;}while(write!==preferenceWrite);
+   if(destroyed||revision!==applyRevision)return;bodyPolicyPending=false;
+  }
+  if(destroyed||revision!==applyRevision)return;
+  if(prefs.enabled&&prefs.mode!=='original')await translator.start(prefs.mode,prefs.online,prefs.translationUnit);else report('原文模式 · '+(prefs.words?'查词开启，链接不跳转':'查词关闭，链接正常'));
+ }
  const ready=store.prefs().then(p=>{if(destroyed)return;prefs={...p,online:true};void apply();}).catch(()=>{report('无法读取偏好，使用默认设置');update();});
- async function setEnabled(value){await ready;if(destroyed)return;if(pausedFeatures){pausedFeatures.enabled=Boolean(value)&&prefs.mode!=='original';update();return;}prefs.enabled=Boolean(value);if(!prefs.enabled)await Promise.all([apply(),persist()]);else{update();await persist();await apply();}}
- async function setMode(mode){if(!['original','bilingual','translated'].includes(mode))return;await ready;if(destroyed)return;prefs.mode=mode;if(pausedFeatures){pausedFeatures.enabled=mode!=='original';update();await persist();return;}prefs.enabled=true;translator.stop();update();await persist();await apply();}
+ async function setEnabled(value){await ready;if(destroyed)return;if(pausedFeatures){pausedFeatures.enabled=Boolean(value)&&prefs.mode!=='original';update();return;}if(value&&!prefs.enabled&&prefs.mode!=='original')bodyPolicyPending=true;prefs.enabled=Boolean(value);if(!prefs.enabled)await Promise.all([apply(),persist()]);else{update();await persist();await apply();}}
+ async function setMode(mode){if(!['original','bilingual','translated'].includes(mode))return;await ready;if(destroyed)return;const activation=mode!=='original'&&(!prefs.enabled||prefs.mode==='original');prefs.mode=mode;if(pausedFeatures){pausedFeatures.enabled=mode!=='original';update();await persist();return;}if(activation)bodyPolicyPending=true;prefs.enabled=true;applyRevision++;translator.stop();update();await persist();await apply();}
  async function setTranslationUnit(value){if(!['paragraph','sentence'].includes(value))return;await ready;if(destroyed)return;prefs.translationUnit=value;await Promise.all([apply(),persist()]);}
- async function setWords(value){await ready;if(destroyed)return;if(pausedFeatures){pausedFeatures.words=Boolean(value);update();return;}prefs.words=Boolean(value);if(!value)close();update();if(!prefs.enabled||prefs.mode==='original')report('原文模式 · '+(prefs.words?'查词开启，链接不跳转':'查词关闭，链接正常'));await persist();}
+ async function setWords(value,{activate=false}={}){await ready;if(destroyed)return;if(pausedFeatures&&!(activate&&value)){pausedFeatures.words=Boolean(value);update();return;}if(pausedFeatures)pausedFeatures=null;if(value&&!prefs.words)lookupPolicyPending=true;prefs.words=Boolean(value);if(!value)close();update();if(!prefs.enabled||prefs.mode==='original')report('原文模式 · '+(prefs.words?'查词开启，链接不跳转':'查词关闭，链接正常'));await persist();}
  // Main-switch pause is distinct from the chosen feature configuration.
  // Keep it only in this reader session; page reload retains its existing policy.
  function toggleReader(){
@@ -91,16 +120,20 @@ export function mountReader({root=document.body,transport=async(type,text,online
    await ready;if(destroyed)return;
    if(prefs.words||prefs.enabled&&prefs.mode!=='original'){
     pausedFeatures={words:prefs.words,enabled:prefs.enabled&&prefs.mode!=='original'};
-    prefs.words=false;prefs.enabled=false;translator.stop();close();closeSettings();window.speechSynthesis?.cancel();update();report('已暂停 · 原文阅读，功能设置已保留');await persist();
+    prefs.words=false;prefs.enabled=false;applyRevision++;bodyPolicyPending=false;lookupPolicyPending=false;translator.stop();close();closeSettings();window.speechSynthesis?.cancel();update();report('已暂停 · 原文阅读，功能设置已保留');void persist();
    }else if(pausedFeatures){
     const resume=pausedFeatures;pausedFeatures=null;prefs.words=resume.words;prefs.enabled=resume.enabled;
-    closeSettings();update();await persist();void apply().catch(()=>report('正文翻译暂不可用，可在设置中重试'));
-   }else await setWords(true);
+    closeSettings();update();bodyPolicyPending=prefs.enabled&&prefs.mode!=='original';lookupPolicyPending=prefs.words;void persist();void apply().catch(()=>report('正文翻译暂不可用，可在设置中重试'));
+   }else void setWords(true);
   });
   toggleQueue=job.catch(()=>{});return job;
  }
 
  function restore(){translator.stop();if(pausedFeatures)pausedFeatures.enabled=false;prefs.enabled=false;close();closeSettings();window.speechSynthesis?.cancel();update();report('已恢复原文；点词查询'+(prefs.words?'仍开启':'已关闭'));void persist();}
+ async function replaceContent(render){
+  if(destroyed)return;const revision=++contentRevision;translator.stop();close();closeSettings();window.speechSynthesis?.cancel();render();
+  await ready;if(destroyed||revision!==contentRevision)return;await apply();
+ }
  async function bilingual(){await ready;if(prefs.enabled&&prefs.mode!=='original')return setEnabled(false);return setMode('bilingual');}
  async function setBilingual(value){return value?setMode('bilingual'):setEnabled(false);}
  function show(word,target,sentence='',offset=null){
@@ -114,15 +147,15 @@ export function mountReader({root=document.body,transport=async(type,text,online
  }
  async function showEntry(word,target,sentence,offset){
   closeSelection();
-  const id=++requestId;lookupController?.abort();lookupController=new AbortController();active=word.toLowerCase();lastFocus=target;context=sentence;contextOffset=offset;lastEntry=null;saveFailure=null;saveReady=false;setCollapsed(false);$('.dict-body').scrollTop=0;$('.entry-details').open=false;$('#retry').hidden=true;$('#context-engine-settings').hidden=true;$('#lookup-selection').hidden=true;$('.sense-picker').hidden=true;$('#sense-choice').replaceChildren();closeSettings();$('.dict').hidden=false;$('.vocab').hidden=true;$('.word').textContent=word;$('.mini-word').textContent=word;$('.mini-meaning').textContent='查询中…';$('.zh').textContent='正在查词…';$('.defs').replaceChildren();for(const s of ['.source','.phonetic','.dictionary-label','.morphology','.zh-source','.sense-status','.related'])$(s).textContent='';$('.sentence').textContent=sentence?'当前句子：'+sentence:'当前没有句子上下文';$('#save').textContent='收藏';$('#save').disabled=true;
-  try{await ready;if(destroyed||id!==requestId)return;let result;try{result=await transport('lookup',word,prefs.online,{signal:lookupController.signal});}catch(error){if(destroyed||id!==requestId||lookupController.signal.aborted||!prefs.online||!sentence||['ONLINE_REQUIRED','INVALID_WORD'].includes(error?.code)||word.length>80||!/^[A-Za-z]+(?:['’-][A-Za-z]+)*(?: [A-Za-z]+(?:['’-][A-Za-z]+)*){0,3}$/.test(word))throw error;result={word,lemma:word.toLowerCase(),kind:'unavailable',senses:[],source:'Collins 词条未读取成功',dictionaryError:error.message,sourceUrls:error.sourceUrls||[]};}if(destroyed||id!==requestId)return;
+  const id=++requestId;lookupController?.abort();lookupController=new AbortController();active=word.toLowerCase();lastFocus=target;context=sentence;contextOffset=offset;lastEntry=null;saveFailure=null;saveReady=false;setCollapsed(false);$('.dict-body').scrollTop=0;$('.entry-details').open=false;$('#retry').hidden=true;$('#context-engine-settings').hidden=true;$('#lookup-selection').hidden=true;$('.sense-picker').hidden=true;$('#sense-choice').replaceChildren();closeSettings();$('.dict').hidden=false;$('.vocab').hidden=true;$('.word').textContent=word;$('.mini-word').textContent=word;$('.mini-meaning').textContent='查询中…';$('.zh').textContent='正在查词…';$('.defs').replaceChildren();for(const s of ['.source','.phonetic','.dictionary-label','.morphology','.zh-source','.sense-status','.related'])$(s).textContent='';$('.sentence').textContent=sentence?'当前句子：'+sentence:'当前没有句子上下文';$('#save').textContent='收藏';$('#save').disabled=true;$('#save-hint').hidden=true;$('#save-hint').textContent='';$('#save').removeAttribute('aria-describedby');
+  try{await ready;if(destroyed||id!==requestId)return;let result;try{result=await sendAfterPreferences('lookup',word,prefs.online,{signal:lookupController.signal});}catch(error){if(destroyed||id!==requestId||lookupController.signal.aborted||!prefs.online||!sentence||['ONLINE_REQUIRED','INVALID_WORD'].includes(error?.code)||word.length>80||!/^[A-Za-z]+(?:['’-][A-Za-z]+)*(?: [A-Za-z]+(?:['’-][A-Za-z]+)*){0,3}$/.test(word))throw error;result={word,lemma:word.toLowerCase(),kind:'unavailable',senses:[],source:'Collins 词条未读取成功',dictionaryError:error.message,sourceUrls:error.sourceUrls||[]};}if(destroyed||id!==requestId)return;
    let shownSense=null,aiOnly=false;
    const renderSource=sense=>{
     $('.source').textContent=aiOnly?(result.senses?.length?'AI 语境释义（未匹配 Collins）；下方词条仅供查阅':'AI 语境释义；Collins 词条未读取成功'):result.source||'';
     const urls=sense?.sourceUrl?[sense.sourceUrl]:result.sourceUrls||[];
     for(const url of urls.slice(0,1)){try{const parsed=new URL(url);if(parsed.protocol!=='https:'||!['dict.youdao.com','www.collinsdictionary.com'].includes(parsed.hostname))continue;const a=document.createElement('a');a.href=url;a.textContent=' 打开原词条 ↗';a.target='_blank';a.rel='noopener noreferrer';$('.source').append(a);}catch{}}
    };
-   lastEntry={word,lemma:result.lemma||result.word||active,zh:result.zh,sentence,source:globalThis.location?.href||'',dictionarySource:result.source};active=lastEntry.lemma;$('.word').textContent=word.includes(' ')?word:result.word||word;$('.mini-word').textContent=word.includes(' ')?word:result.word||word;$('.zh').textContent=result.zh;$('.mini-meaning').textContent=result.zh||'';$('.zh-source').textContent=result.zhSource||(result.kind==='unavailable'?'Collins 词条未读取成功':'示例释义');$('.dictionary-label').textContent=result.kind==='collins'?'Collins · 英汉双解':result.kind==='online'?'在线词义':result.kind==='unavailable'?'Collins 暂缺':'演示词义';$('.phonetic').textContent=result.phonetic||'';$('.morphology').textContent=result.morphology||'';
+   lastEntry={word,lemma:result.lemma||result.word||active,zh:result.zh,sentence,...(Number.isInteger(offset)?{contextOffset:offset}:{}),source:globalThis.location?.href||'',dictionarySource:result.source};active=lastEntry.lemma;$('.word').textContent=word.includes(' ')?word:result.word||word;$('.mini-word').textContent=word.includes(' ')?word:result.word||word;$('.zh').textContent=result.zh;$('.mini-meaning').textContent=result.zh||'';$('.zh-source').textContent=result.zhSource||(result.kind==='unavailable'?'Collins 词条未读取成功':'示例释义');$('.dictionary-label').textContent=result.kind==='collins'?'Collins · 英汉双解':result.kind==='online'?'在线词义':result.kind==='unavailable'?'Collins 暂缺':'演示词义';$('.phonetic').textContent=result.phonetic||'';$('.morphology').textContent=result.morphology||'';
    for(const def of result.definitions||[]){const p=document.createElement('p');p.textContent=def;$('.defs').append(p);}if(result.example){const example=document.createElement('p');example.textContent='例句：'+result.example;$('.defs').append(example);}
    if(!$('.defs').children.length){const p=document.createElement('p');p.textContent=result.englishError?.message?'英文解释未返回：'+result.englishError.message:result.kind==='unavailable'?'Collins 词条读取失败：'+(result.dictionaryError||'暂未获得英文释义和词性，请查看词条来源。'):['online','collins'].includes(result.kind)?'暂未读取到英文解释，完整义项请查看词条来源。':'此演示条目暂无英文释义和词性。';$('.defs').append(p);}
    if(Array.isArray(result.senses)&&(result.senses.length||sentence)){
@@ -143,29 +176,29 @@ export function mountReader({root=document.body,transport=async(type,text,online
      if(contextOption)contextOption.selected=true;
      $('.zh').textContent='正在分析当前语境…';$('.mini-meaning').textContent='语境分析中…';
      try{
-      const contextInput={word,sentence,offset,senses:result.senses};const meaning=parseContextResult(await transport('context',word,true,{signal:lookupController.signal,context:contextInput,engineKey:engineState.context?.cacheKey}),contextInput);
+      const contextInput={word,sentence,offset,senses:result.senses,...(contextRevision?{contextRevision}:{})},rawMeaning=await sendAfterPreferences('context',word,true,{signal:lookupController.signal,context:contextInput,engineKey:engineState.context?.cacheKey});const meaning=parseContextResult(rawMeaning,{...contextInput,...(CONTEXT_ACCEPTED_REVISIONS.includes(rawMeaning?.method)?{contextRevision:rawMeaning.method}:{})});
       if(destroyed||id!==requestId)return;
       if(!manuallySelected){
        const selected=result.senses.find(s=>s.id===meaning.senseId);
        if(selected)displaySense(selected);
-       else{shownSense=null;aiOnly=true;$('.dictionary-label').textContent='AI · 语境释义';active=phraseLemma(word);lastEntry={...lastEntry,lemma:active};if(result.kind!=='unavailable')$('.defs').replaceChildren();$('#sense-choice').selectedIndex=-1;}
-       if(selected&&matchesDictionaryGloss(meaning.zh,selected.zh)){
+       else{shownSense=null;aiOnly=true;$('.dictionary-label').textContent=meaning.meaningStatus==='candidate'?'AI · 候选释义':'AI · 语境释义';active=phraseLemma(word);lastEntry={...lastEntry,lemma:isVocabularyLemma(meaning.lemma)?meaning.lemma:active};if(result.kind!=='unavailable')$('.defs').replaceChildren();$('#sense-choice').selectedIndex=-1;}
+       if(selected&&matchesDictionaryGloss(meaning.zh,selected.zh,{allowEnumeration:meaning.method!=='ai-context-v6'})){
         // The rendered text is the dictionary's own gloss; AI only chose the
         // candidate. Keep its real option/source instead of a synthetic state.
         contextOption?.remove();$('.sense-picker').hidden=ranked.ordered.length<2;
-        $('.sense-status').textContent='按原句匹配的词典义项';
+        $('.sense-status').textContent=meaning.method==='ai-context-v6'?'AI 按原句匹配的词典义项':'按原句匹配的词典义项';
         $('.zh-source').textContent=engineState.context&&engineState.context.id!=='builtin'?'Collins 词典原义；AI（'+contextProviderName()+'）根据原句匹配该义项':'Collins 词典原义；AI 根据原句匹配该义项';
        }else{
-        $('.zh').textContent=meaning.zh;$('.mini-meaning').textContent=meaning.zh;lastEntry={...lastEntry,zh:meaning.zh,dictionarySource:'AI 语境释义 · '+contextProviderName()+'；原词典：'+(result.source||'Collins')};
+        $('.zh').textContent=meaning.zh;$('.mini-meaning').textContent=meaning.zh;lastEntry={...lastEntry,zh:meaning.zh,dictionarySource:'AI 语境释义 · '+contextProviderName()+'；原词典：'+(result.source||'Collins')+(meaning.meaningStatus==='candidate'?'；候选含义（未确认）':'')+(meaning.reviewStatus==='evidence-unconfirmed'?'；复核依据未确认':meaning.reviewStatus==='scope-unconfirmed'?'；复核未确认':'')};
         if(contextOption){contextOption.textContent='查看词典原义';contextOption.selected=true;}
-        $('.sense-status').textContent=selected?'此处含义 · AI 结合原句分析':'此处含义 · AI 释义（无对应 Collins 义项）';
+        $('.sense-status').textContent=selected?'此处含义 · AI 结合原句分析':meaning.meaningStatus==='candidate'?'可能的含义 · AI 候选，请结合上下文核对':meaning.reviewStatus==='scope-unconfirmed'?'此处含义 · AI 释义（复核未确认，请结合原句判断）':meaning.reviewStatus==='evidence-unconfirmed'?'此处含义 · AI 释义（复核依据未确认，请结合上下文判断）':'此处含义 · AI 释义（词典义项未确认）';
         const provider=engineState.context&&engineState.context.id!=='builtin'?'（'+contextProviderName()+'）':'';
-        $('.zh-source').textContent=selected?'AI 语境释义'+provider+'；对应 Collins '+(selected.lemma||result.word)+' 原义：'+selected.zh:result.senses.length?'AI'+provider+' 根据原句生成；下拉可查看 Collins 原始义项':'Collins 暂无可用义项；此处由 AI'+provider+' 根据原句释义。';if(!result.senses.length)$('.dictionary-label').textContent='AI · 语境释义';
+        $('.zh-source').textContent=meaning.meaningStatus==='candidate'?'AI'+provider+' 提出的一种可能读法，尚未确认；'+(result.senses.length?'下拉可查看词典原义核对':'当前没有可核对的词典义项'):selected?'AI 语境释义'+provider+'；对应 Collins '+(selected.lemma||result.word)+' 原义：'+selected.zh:result.senses.length?'AI'+provider+' 根据原句生成；下拉可查看 Collins 原始义项':'Collins 暂无可用义项；此处由 AI'+provider+' 根据原句释义。';if(!result.senses.length)$('.dictionary-label').textContent=meaning.meaningStatus==='candidate'?'AI · 候选释义':'AI · 语境释义';
        }
       }
      }catch(error){
       if(destroyed||id!==requestId)return;
-      if(!manuallySelected){if(ranked.ordered.length)displaySense(ranked.ordered[0]);else{$('.zh').textContent='暂未获得此处含义，请重试';$('.mini-meaning').textContent='暂未查到';}const reason=error?.code==='CONTEXT_INVALID_RESULT'&&error.validationReason==='incomplete'?'语境模型输出不完整，请更换语境 AI 或稍后手动重试':{CONTEXT_QUOTA_EXCEEDED:'内置 AI 当日额度已用完，请更换语境 AI 或等待额度重置',CONTEXT_BUSY:'语境服务繁忙，请稍后重试',RATE_LIMITED:'语境查询过于频繁，请稍后重试',CONTEXT_TIMEOUT:'语境分析超时，请重试',CONTEXT_NETWORK:'语境服务连接失败，请检查网络后重试',CONTEXT_INVALID_RESULT:'语境结果未通过校验，请重试',CONTEXT_UNAVAILABLE:'语境服务暂不可用，请重试',CONTEXT_ACCESS_DENIED:engineState.context&&engineState.context.id!=='builtin'?'所选语境 AI 的密钥或访问权限不可用，请检查已保存配置':'语境服务拒绝了请求，请稍后重试',ENGINE_STORAGE:'语境引擎配置无法读取，未发送原句；请打开引擎设置后重试',CONTEXT_INVALID_REQUEST:'语境请求未通过校验，请重新查词'}[error?.code]||'语境分析失败，请重试';$('.sense-status').textContent=reason+(ranked.ordered.length?' · 当前显示词典原义':'');$('#retry').hidden=false;$('#context-engine-settings').hidden=!onOpenContextEngines;}
+      if(!manuallySelected){if(ranked.ordered.length)displaySense(ranked.ordered[0]);else{$('.zh').textContent='暂未获得此处含义，请重试';$('.mini-meaning').textContent='暂未查到';}const reason=error?.code==='CONTEXT_INVALID_RESULT'&&error.validationReason==='incomplete'?'语境模型输出不完整，请更换语境 AI 或稍后手动重试':{CONTEXT_QUOTA_EXCEEDED:'内置 AI 当日额度已用完，请更换语境 AI 或等待额度重置',CONTEXT_BUSY:'语境服务繁忙，请稍后重试',RATE_LIMITED:'语境查询过于频繁，请稍后重试',CONTEXT_TIMEOUT:'语境分析超时，请重试',CONTEXT_NETWORK:'语境服务连接失败，请检查网络后重试',CONTEXT_INVALID_RESULT:'语境结果未通过校验，请重试',CONTEXT_UNAVAILABLE:'语境服务暂不可用，请重试',CONTEXT_ACCESS_DENIED:engineState.context&&engineState.context.id!=='builtin'?'所选语境 AI 的密钥或访问权限不可用，请检查已保存配置':'语境服务拒绝了请求，请稍后重试',ENGINE_STORAGE:'语境引擎配置无法读取，未发送原句；请打开引擎设置后重试',CONTEXT_INVALID_REQUEST:'语境请求未通过校验，请重新查词'}[error?.code]||'语境分析失败，请重试';$('.sense-status').textContent=reason+(ranked.ordered.length?' · 当前显示词典原义':'');$('#retry').hidden=false;$('#context-engine-settings').hidden=!onOpenContextEngines;if(contextRevision==='ai-context-v6'){shownSense=null;$('.zh').textContent='此处含义未确认';$('.mini-meaning').textContent='含义未确认';lastEntry={...lastEntry,zh:''};$('.defs').replaceChildren();if(contextOption)contextOption.selected=true;$('.dictionary-label').textContent=ranked.ordered.length?'Collins · 原义待选择':'AI · 未获释义';$('.zh-source').textContent=ranked.ordered.length?'尚未确认当前句中的含义；可手动选择词典原义':'尚未确认当前句中的含义，当前没有可核对的词典义项';$('.sense-status').textContent=reason+(ranked.ordered.length?' · 可手动查看词典原义':'');}}
      }
     }
     $('.related').textContent=(result.relatedForms||[]).length?'派生词：'+result.relatedForms.map(s=>s.word+'（'+s.zh+'）').join('；'):'';
@@ -221,7 +254,7 @@ export function mountReader({root=document.body,transport=async(type,text,online
  async function translateSelection(text){
   close();closeSettings();selectionSource=text;selectionController=new AbortController();const controller=selectionController,id=++selectionSequence,engine=engineState.selection;
   $('.selection-card').hidden=false;$('#selection-provider').textContent=engine.label+' · 机器翻译';$('#selection-original').textContent=text;$('#selection-result').textContent='正在翻译…';$('#retry-selection').hidden=true;
-  try{const result=await transport('selection',text,true,{signal:controller.signal,engineKey:engine.cacheKey});if(destroyed||controller.signal.aborted||id!==selectionSequence)return;if(typeof result!=='string'||!result.trim())throw Error('服务未返回有效译文');$('#selection-result').textContent=result;}
+  try{const result=await sendAfterPreferences('selection',text,true,{signal:controller.signal,engineKey:engine.cacheKey});if(destroyed||controller.signal.aborted||id!==selectionSequence)return;if(typeof result!=='string'||!result.trim())throw Error('服务未返回有效译文');$('#selection-result').textContent=result;}
   catch(error){if(destroyed||controller.signal.aborted||id!==selectionSequence)return;$('#selection-result').textContent='选文翻译失败：'+error.message;$('#retry-selection').hidden=false;}
  }
  $('#translate-selection').onpointerdown=e=>e.preventDefault();
@@ -253,7 +286,7 @@ export function mountReader({root=document.body,transport=async(type,text,online
  }
  for(const type of ['click','auxclick','keydown'])window.addEventListener(type,interceptLink,true);
  function placeDictionary(x,y){cardPoint=[x,y];const card=$('.dict');if(!card.getBoundingClientRect||!window.innerWidth)return;const view=visibleViewport(window);card.style.right='auto';card.style.bottom='auto';const first=dictionaryBounds(view,x,y);card.style.width=first.width+'px';card.style.maxWidth=first.width+'px';card.style.maxHeight=(manualPosition?Math.min(440,view.height-24):first.maxHeight)+'px';const rect=card.getBoundingClientRect(),bounds=manualPosition?movableBounds(view,manualPosition.left,manualPosition.top,rect.width,rect.height):dictionaryBounds(view,x,y,rect.height);if(!manualPosition)card.style.maxHeight=bounds.maxHeight+'px';else manualPosition=bounds;card.style.left=bounds.left+'px';card.style.top=bounds.top+'px';}
- function setCollapsed(value){$('.dict').classList.toggle('is-collapsed',value);$('.dict-body').hidden=value;$('.dict-title').hidden=value;$('.dict-actions').hidden=value;$('.mini-result').hidden=!value;$('#collapse-dict').textContent=value?'+':'−';$('#collapse-dict').setAttribute('aria-expanded',String(!value));$('#collapse-dict').setAttribute('aria-label',value?'展开释义':'收起释义');$('#collapse-dict').title=value?'展开释义':'收起，继续阅读';}
+ function setCollapsed(value){$('.dict').classList.toggle('is-collapsed',value);$('.dict-body').hidden=value;$('.dict-title').hidden=value;$('.dict-actions').hidden=value;$('#save-hint').hidden=value||!$('#save-hint').textContent;$('.mini-result').hidden=!value;$('#collapse-dict').textContent=value?'+':'−';$('#collapse-dict').setAttribute('aria-expanded',String(!value));$('#collapse-dict').setAttribute('aria-label',value?'展开释义':'收起释义');$('#collapse-dict').title=value?'展开释义':'收起，继续阅读';}
  $('#collapse-dict').onclick=()=>{setCollapsed(!$('.dict').classList.contains('is-collapsed'));if(cardPoint)placeDictionary(...cardPoint);};
  $('#reset-dict').onclick=()=>{manualPosition=null;$('#reset-dict').hidden=true;if(cardPoint)placeDictionary(...cardPoint);};
  const handle=$('.dict-handle');
@@ -266,7 +299,7 @@ export function mountReader({root=document.body,transport=async(type,text,online
  $('.entry-details').ontoggle=()=>{if(!$('.entry-details').open)$('.dict-body').scrollTop=0;if(cardPoint&&!$('.dict').hidden)placeDictionary(...cardPoint);};
  function viewportChanged(){position();queueSelectionPosition();if(!$('.dict').hidden&&cardPoint)placeDictionary(...cardPoint);}
  function outside(e){if(isAuxiliaryUIEvent(e)||e.composedPath?.().includes(host)||root.contains(e.target))return;close();}
- function keydown(e){if(e.key==='Escape'){
+ function keydown(e){if(e.isComposing||e.keyCode===229)return;if(e.key==='Escape'){
   const settingsOpen=!$('.panel').hidden,vocabularyOpen=!$('.vocab').hidden,cardOpen=!$('.dict').hidden,inside=Boolean(shadow.activeElement);
   if(settingsOpen||vocabularyOpen||cardOpen||!$('.selection-card').hidden||!$('#lookup-selection').hidden||!$('#translate-selection').hidden){closeSettings();close({restoreFocus:inside&&cardOpen&&!settingsOpen&&!vocabularyOpen});$('.vocab').hidden=true;if(inside&&(settingsOpen||vocabularyOpen))bubble.focus({preventScroll:true});}
  }if(e.key==='Enter'&&prefs.words&&root.contains(e.target)&&e.target.dataset?.word){const word=e.target.dataset.word,snapshot=proseSnapshot(proseBlock(e.target),e.target,0,{demo});if(snapshot){const data=snapshotContext(snapshot,snapshot.offset,word.length);void show(word,e.target,data.sentence,data.offset);}}}
@@ -288,8 +321,8 @@ export function mountReader({root=document.body,transport=async(type,text,online
   catch(error){if(!destroyed&&lastEntry&&vocabularyKey(lastEntry)===key){const field=$('.sense-status'),previous=saveFailure?.key===key&&field.textContent===saveFailure.message?saveFailure.previous:field.textContent,message=['STORAGE_FULL','VOCABULARY_FULL','VOCABULARY_READ_FAILED'].includes(error?.code)?error.message:'保存失败，请重试';saveFailure={key,previous,message};field.textContent=message;}}
   finally{savingKeys.delete(key);if(!destroyed)renderSave();}
  };
- const vocabulary=mountVocabulary({root:$('.vocab'),store});
- async function openVocabulary(){if(destroyed)return;close();closeSettings();if(onOpenVocabulary)return onOpenVocabulary();$('.vocab').hidden=false;await vocabulary.refresh();if(!destroyed&&!$('.vocab').hidden)$('#vocab-search').focus({preventScroll:true});}
+ const vocabulary=mountVocabulary({root:$('.vocab'),store,onLookup:entry=>show(entry.word,$('#vocabulary'),entry.sentence,vocabularyOccurrence(entry))});
+ async function openVocabulary(){if(destroyed)return;close();closeSettings();if(onOpenVocabulary)return onOpenVocabulary();$('.vocab').hidden=false;await vocabulary.refresh();if(!destroyed&&!$('.vocab').hidden)$('.vocab .close').focus({preventScroll:true});}
  function exportWords(){return vocabulary.exportWords();}
  $('#vocabulary').onclick=openVocabulary;$('.vocab .close').onclick=()=>{$('.vocab').hidden=true;bubble.focus();};
  let pressTimer=null,pressOrigin=null,suppressClick=false;
@@ -321,7 +354,13 @@ export function mountReader({root=document.body,transport=async(type,text,online
   }
  };
  bubble.onclick=()=>{if(suppressClick){suppressClick=false;return;}void toggleReader();};update();
- async function configure(next){await ready;if(destroyed)return;if(JSON.stringify(prefs)===JSON.stringify(next))return;const restart=['mode','enabled','online','translationUnit'].some(k=>prefs[k]!==next[k]);pausedFeatures=null;prefs={...DEFAULT_PREFS,...next,online:true};if(!prefs.words)close();update();if(restart){translator.stop();void apply();}}
+ async function configure(next){
+  await ready;if(destroyed)return;const requested={...DEFAULT_PREFS,...next,online:true};
+  const changed=Object.keys(DEFAULT_PREFS).filter(key=>{const before=prefs[key],after=requested[key];return key==='bubblePosition'?!((before==null&&after==null)||(before&&after&&before.x===after.x&&before.y===after.y)):before!==after;});
+  if(!changed.length)return;const restart=changed.some(k=>['mode','enabled','translationUnit'].includes(k));
+  if(changed.some(k=>['words','mode','enabled','translationUnit'].includes(k)))pausedFeatures=null;
+  prefs=requested;if(!prefs.words)close();update();if(restart){translator.stop();void apply();}
+ }
  window.addEventListener('focus',resumeFavorites);document.addEventListener('visibilitychange',visibilityResumed);
- return {ready,configure,configureEngines,show,bilingual,setBilingual,restore,setEnabled,setMode,setWords,setTranslationUnit,openSettings,openVocabulary,exportWords,shadow,get enabled(){return prefs.enabled;},get mode(){return prefs.enabled?prefs.mode:'original';},get preferences(){return {...prefs};},destroy(){destroyed=true;lookupInFlight=null;closeSelection();window.removeEventListener('focus',resumeFavorites);document.removeEventListener('visibilitychange',visibilityResumed);for(const type of ['click','auxclick','keydown'])window.removeEventListener(type,interceptLink,true);document.removeEventListener('selectionchange',selectionChanged);clearPress();requestId++;lookupController?.abort();translator.stop();root.removeEventListener('click',clicked);document.removeEventListener('keydown',keydown);document.removeEventListener('click',outside);for(const [type,fn] of [['pointerdown',touchStart],['pointermove',touchMove],['pointerup',touchEnd],['pointercancel',touchEnd]])root.removeEventListener(type,fn);window.visualViewport?.removeEventListener('resize',viewportChanged);window.visualViewport?.removeEventListener('scroll',viewportChanged);window.removeEventListener('resize',viewportChanged);window.removeEventListener('scroll',queueSelectionPosition,true);cancelSelectionFrame();host.remove();}};
+ return {ready,configure,configureEngines,show,bilingual,setBilingual,restore,replaceContent,setEnabled,setMode,setWords,setTranslationUnit,openSettings,openVocabulary,exportWords,shadow,get paused(){return Boolean(pausedFeatures);},get enabled(){return prefs.enabled;},get mode(){return prefs.enabled?prefs.mode:'original';},get preferences(){return {...prefs};},destroy(){destroyed=true;vocabulary.destroy();lookupInFlight=null;closeSelection();window.removeEventListener('focus',resumeFavorites);document.removeEventListener('visibilitychange',visibilityResumed);for(const type of ['click','auxclick','keydown'])window.removeEventListener(type,interceptLink,true);document.removeEventListener('selectionchange',selectionChanged);clearPress();requestId++;lookupController?.abort();translator.stop();root.removeEventListener('click',clicked);document.removeEventListener('keydown',keydown);document.removeEventListener('click',outside);for(const [type,fn] of [['pointerdown',touchStart],['pointermove',touchMove],['pointerup',touchEnd],['pointercancel',touchEnd]])root.removeEventListener(type,fn);window.visualViewport?.removeEventListener('resize',viewportChanged);window.visualViewport?.removeEventListener('scroll',viewportChanged);window.removeEventListener('resize',viewportChanged);window.removeEventListener('scroll',queueSelectionPosition,true);cancelSelectionFrame();host.remove();}};
 }
