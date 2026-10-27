@@ -11,7 +11,12 @@ export function lemmaCandidates(word,references=[]){
   if(/ying$/.test(word)&&word.length<=5)add(word.slice(0,-4)+'ie');
   if(short){add(short);add(stem);}else{if(/(?:[^aeiou]|^)[aeiou][^aeiouwxy]$/.test(stem)&&!/[aeiou]{2}/.test(stem))add(stem+'e');add(stem);add(stem+'e');}
  }else if(/ied$/.test(word)){add(word.slice(0,-3)+'y');add(word.slice(0,-1));}
- else if(/ed$/.test(word)){const stem=word.slice(0,-2),short=unDouble(stem);if(short)add(short);add(word.slice(0,-1));add(stem);}
+ else if(/ed$/.test(word)){
+  const stem=word.slice(0,-2),short=unDouble(stem);
+  // A doubled consonant can belong to the base (fill → filled) or be added
+  // by inflection (stop → stopped). Keep both before the two-request cutoff.
+  if(short){add(short);add(stem);}else{add(word.slice(0,-1));add(stem);}
+ }
  else if(/ies$/.test(word)){add(word.slice(0,-3)+'y');add(word.slice(0,-1));}
  else if(/ves$/.test(word)){add(word.slice(0,-3)+'f');add(word.slice(0,-3)+'fe');add(word.slice(0,-1));}
  else if(/s$/.test(word)&&!/(?:ss|us|is)$/.test(word)){if(/(?:[sxz]|ch|sh|o)es$/.test(word))add(word.slice(0,-2));add(word.slice(0,-1));}

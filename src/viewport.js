@@ -15,3 +15,10 @@ export function movableBounds(view,x,y,width,height){
  const margin=12,left=view.left+margin,top=view.top+margin;
  return {left:Math.max(left,Math.min(x,view.left+view.width-margin-width)),top:Math.max(top,Math.min(y,view.top+view.height-margin-height))};
 }
+
+/** Keep auxiliary panels inside the visible area when a keyboard or zoom reduces it. */
+export function auxiliaryPanelBounds(view,layoutHeight){
+ if(!Number.isFinite(view.height)||view.height<=0||!Number.isFinite(layoutHeight)||layoutHeight<=0)return null;
+ const reduced=view.height<240||view.height<=layoutHeight-120,gap=reduced?12:86;
+ return {bottom:Math.max(0,layoutHeight-view.top-view.height)+gap,maxHeight:Math.max(1,view.height-(reduced?24:120))};
+}
