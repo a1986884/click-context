@@ -39,7 +39,8 @@ export async function auditHistory({root,reviewedFixtures=[]}){
    if(bytes.subarray(0,20).toString().startsWith('# v2 git bundle')||bytes.subarray(0,20).toString().startsWith('# v3 git bundle')){
     if(bundles.has(object))continue;bundles.add(object);if(bundles.size>8)throw Error('nested-bundle-limit');
     const id=bundleIndex++,file=join(temporary,id+'.bundle'),nested=join(temporary,'repository-'+id);await writeFile(file,bytes);
-    git(temporary,['clone','--mirror','--quiet',file,nested]);await scan(nested,scope+'/bundle:'+object);continue;
+    const objects=git(repository,['rev-parse','--path-format=absolute','--git-common-dir']).toString().trim();
+    git(temporary,['clone','--mirror','--quiet','--reference',objects,file,nested]);await scan(nested,scope+'/bundle:'+object);continue;
    }
    if(bytes.includes(0)){report.binaryExcluded++;continue;}
    report.textBlobs++;
