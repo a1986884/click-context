@@ -12,7 +12,7 @@ export const contextSamples=[
  ['wound','She wound the bandage around the wound.','伤',1],
  ['tear','A tear rolled down her cheek as she noticed a tear in the curtain.','泪',0],
  ['tear','A tear rolled down her cheek as she noticed a tear in the curtain.','裂|破口|破洞',1],
- ['bass','The bass player cooked a bass for dinner.','低音|贝斯|贝司',0,'optional','演奏|乐手|乐师'],
+ ['bass','The bass player cooked a bass for dinner.','低音|贝斯|贝司',0,'optional','演奏|乐手|乐师|贝斯手|贝司手|提琴手'],
  ['bass','The bass player cooked a bass for dinner.','鲈',1,'optional','鳜|桂鱼'],
  // Held-out compounds: these words/sentences are not examples in the model prompt.
  ['coffee','She put the coffee cup on the table.','咖啡',0,'optional','杯'],
