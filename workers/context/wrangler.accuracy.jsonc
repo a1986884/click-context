@@ -1,0 +1,13 @@
+{
+ "name":"click-context-accuracy-145",
+ "main":"index.js",
+ "compatibility_date":"2026-10-20",
+ "ai":{"binding":"AI"},
+ "ratelimits":[
+  {"name":"PER_IP","namespace_id":"64214501","simple":{"limit":60,"period":60}},
+  {"name":"TOTAL","namespace_id":"64214502","simple":{"limit":500,"period":60}},
+  {"name":"TRANSLATION_IP","namespace_id":"64214503","simple":{"limit":60,"period":60}},
+  {"name":"TRANSLATION_TOTAL","namespace_id":"64214504","simple":{"limit":300,"period":60}}
+ ],
+ "observability":{"enabled":false}
+}
