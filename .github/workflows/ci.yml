@@ -1,4 +1,4 @@
-name: Verify Click Context
+name: Verify Closeread
 on:
   push:
     branches: [main]
