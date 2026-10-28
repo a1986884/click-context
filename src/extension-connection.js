@@ -1,4 +1,4 @@
-export const RELOAD_MESSAGE='词汐连接已失效，可能是插件刚刚更新。请刷新当前网页后重新启用。';
+export const RELOAD_MESSAGE='语境精读连接已失效，可能是插件刚刚更新。请刷新当前网页后重新启用。';
 export function createRuntimeConnection(api,{onInvalidated=()=>{}}={}){
  let expired=false;
  function invalidate(){if(!expired){expired=true;onInvalidated();}return Object.assign(Error(RELOAD_MESSAGE),{code:'EXTENSION_CONTEXT_INVALIDATED',retryable:false});}
