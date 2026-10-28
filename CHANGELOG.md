@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.8.0 — 语境精读 / Closeread 候选 — 2026-10-28
+
+- 展示名称、荧光笔界面、词卡顺序、完整英文义项、AI 英文解释回退、书本开关与官网/README 改版。
+- 本次扩展与用户脚本代码版本为 0.8.0；历史 0.7.98 原生包与 0.7.161 脚本记录不改写。保留存储键、脚本文件名、命名空间和 Worker 名称。
+- 公开安装页及正式后台未在本次更新，AI 语义准确性仍有未解决情况。
+- 原首页完整内容归档至 [改版前 README](docs/legacy/README-before-0.8.md)，用户脚本历史归档至 [改版前脚本说明](docs/legacy/userscript-before-0.8.zh-CN.md)。
+
 Current candidate changes and measured validation are recorded in [docs/ITERATIONS.md](docs/ITERATIONS.md) and [docs/TESTING.md](docs/TESTING.md). The dated entries below are historical.
 
 Use semantic versions MAJOR.MINOR.PATCH; every candidate records its commit,
