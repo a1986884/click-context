@@ -89,3 +89,19 @@ test('failure retry starts fresh even while favorite status is still being read'
 test('closing a shared pending lookup cancels once and reopening starts fresh',async()=>{
  const root=setup(),jobs=[];let aborts=0;const reader=mountReader({root,transport:async(_type,_word,_online,{signal})=>{signal.addEventListener('abort',()=>aborts++);return new Promise(resolve=>jobs.push(resolve));}});const a=reader.show('class',root);await tick();const b=reader.show('class',root);await tick();assert.equal(jobs.length,1);reader.shadow.querySelector('.dict .close').click();assert.equal(aborts,1);const c=reader.show('class',root);await tick();assert.equal(jobs.length,2);jobs[0]({word:'class',zh:'迟到旧义'});jobs[1]({word:'class',zh:'课程'});await Promise.all([a,b,c]);assert.equal(reader.shadow.querySelector('.zh').textContent,'课程');reader.destroy();
 });
+
+test('sentence highlights only the selected occurrence and retains its exact text, with a safe fallback',async()=>{
+ const root=setup(),reader=mountReader({root,transport:async()=>({word:'bank',zh:'河岸',definitions:['land beside a river']})});
+ try{
+  const sentence='The bank near the bank is quiet.';
+  await reader.show('bank',root,sentence,18);
+  const el=reader.shadow.querySelector('.sentence');
+  assert.equal(el.textContent,'当前句子：'+sentence);
+  assert.equal(el.querySelectorAll('mark').length,1);
+  assert.equal(el.querySelector('mark').textContent,'bank');
+  assert.equal(el.querySelector('mark').previousSibling.textContent,'The bank near the ');
+  await reader.show('bank',root,sentence,3);
+  assert.equal(el.textContent,'当前句子：'+sentence);
+  assert.equal(el.querySelector('mark'),null);
+ }finally{reader.destroy();}
+});
