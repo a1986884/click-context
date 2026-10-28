@@ -1,4 +1,4 @@
-Lextide · 词汐
+语境精读 · Closeread
 
 Paragraph translations are provided by Cloudflare Workers AI and labeled as machine translation.
 Dictionary lookups read limited excerpts from the requested public Collins
