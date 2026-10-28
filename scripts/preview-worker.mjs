@@ -5,7 +5,7 @@ import {previewConnectOrigins} from './preview-context-config.mjs';
 export function createPreviewWorker(files,{dictionary=lookupCollins,contextOrigin}={}){
  const policy="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' "+previewConnectOrigins(contextOrigin)+"; frame-ancestors 'none'; base-uri 'self'; object-src 'none'";
  return {async fetch(request){
-  const headers=new Headers({'Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','Content-Security-Policy':policy});
+  const headers=new Headers({'Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','Content-Security-Policy':new URL(request.url).pathname==='/card-qa.html'?policy.replace("frame-ancestors 'none'","frame-ancestors 'self'"):policy});
   if(!['GET','HEAD'].includes(request.method)){headers.set('Allow','GET, HEAD');return new Response('Method not allowed',{status:405,headers});}
   let path;try{path=decodeURIComponent(new URL(request.url).pathname);}catch{return new Response('Bad request',{status:400,headers});}
   if(path==='/api/dictionary'){
