@@ -140,7 +140,7 @@ export class ParagraphTranslator{
    const r=this.records.filter(r=>r.eligible&&r.state==='idle').sort((a,b)=>{const distance=r=>{const rect=this.rect(r),height=window.innerHeight||800;return rect?Math.abs((Math.max(0,rect.top)+Math.min(height,rect.bottom))/2-height/2):0;};return distance(a)-distance(b);})[0];if(!r){if(this.moreVisible){this.refresh([this.root],false,true);continue;}break;}
    const requestSignal=AbortSignal.any([signal,r.controller.signal]);r.state='loading';
    try{
-    let value=this.demo&&r.whole?r.p.dataset.translation:null,fresh=false;let kind=value?'example':'cache',source='词汐 · 人工示例译文';
+    let value=this.demo&&r.whole?r.p.dataset.translation:null,fresh=false;let kind=value?'example':'cache',source='语境精读 · 人工示例译文';
     if(!value){try{value=await abortable(this.store.cacheGet(r.text,cacheNamespace),requestSignal);}catch{requestSignal.throwIfAborted();value=null;}source='本地缓存 · '+sourceName+' 翻译';}
     if(!requestSignal.aborted)this.flushChanges();requestSignal.throwIfAborted();
     if(!this.current(r,requestSignal)){this.refresh([this.root],false);continue;}

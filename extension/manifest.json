@@ -1,9 +1,9 @@
 {
   "manifest_version": 3,
-  "name": "点击语境查词",
-  "version": "0.7.98",
+  "name": "语境精读",
+  "version": "0.8.0",
   "minimum_chrome_version": "130",
-  "description": "点击英文单词，结合当前原句查看此处含义；支持划词翻译、网页双语阅读和本地生词收藏。按网站启用。",
+  "description": "为英语学习者设计的网页精读插件：点英文单词，结合当前原句看懂此处含义；支持划词翻译、网页双语阅读和本地生词收藏。按网站启用。",
   "permissions": [
     "storage",
     "activeTab",
@@ -25,7 +25,7 @@
     "128": "assets/icon128.png"
   },
   "action": {
-    "default_title": "点击语境查词 · 点一下，看懂此处词义",
+    "default_title": "语境精读 · 为英语学习者设计的网页精读插件",
     "default_popup": "popup.html",
     "default_icon": {
       "16": "assets/icon16.png",
@@ -42,5 +42,6 @@
   "options_ui": {
     "page": "engines.html",
     "open_in_tab": true
-  }
+  },
+  "short_name": "语境精读"
 }

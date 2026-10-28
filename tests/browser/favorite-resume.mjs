@@ -14,7 +14,7 @@ try{
  const save=page.locator('lextide-reader #save'),resume=()=>page.evaluate(()=>{window.dispatchEvent(new Event('focus'));document.dispatchEvent(new Event('visibilitychange'));});
  await page.evaluate(async()=>{await __base.saveWord({word:'bank',lemma:'bank',zh:'银行测试',sentence:''});await __reader.show('bank',document.querySelector('#target'));});assert.equal(await save.textContent(),'已收藏');
  await page.evaluate(()=>__base.removeWord('bank'));const before=await page.evaluate(()=>__reads);await resume();
- await page.waitForFunction(()=>__reader.shadow.querySelector('#save').textContent==='收藏',null,{timeout:5000});assert.equal(await page.evaluate(()=>__reads),before+1,'same-task resume events coalesce');assert.equal(await page.evaluate(()=>__dictionary),1);
+ await page.waitForFunction(()=>__reader.shadow.querySelector('#save').textContent==='收藏这次用法',null,{timeout:5000});assert.equal(await page.evaluate(()=>__reads),before+1,'same-task resume events coalesce');assert.equal(await page.evaluate(()=>__dictionary),1);
  await page.evaluate(()=>__base.saveWord({word:'bank',lemma:'bank',zh:'银行测试',sentence:''}));await resume();await page.waitForFunction(()=>__reader.shadow.querySelector('#save').textContent==='已收藏');
  // A delayed resume snapshot may not overwrite the next card or its new save.
  await page.evaluate(()=>__delay=true);await resume();await page.waitForFunction(()=>__jobs.length===1);await page.evaluate(()=>void __reader.show('ocean',document.querySelector('#target')));await page.waitForFunction(()=>__jobs.length===2);await save.click();await page.waitForFunction(()=>__reader.shadow.querySelector('#save').textContent==='已收藏');

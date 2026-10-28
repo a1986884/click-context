@@ -30,5 +30,5 @@ document.querySelector('lextide-reader').addEventListener('readerstatechange',sy
 document.querySelector('#custom').onclick=()=>{document.querySelector('#custom-panel').hidden=false;document.querySelector('#custom-text').focus();};
 document.querySelector('#load-custom').onclick=()=>{const text=document.querySelector('#custom-text').value.trim();if(!text){document.querySelector('#custom-status').textContent='请先粘贴英文正文。';return;}document.querySelector('#custom-status').textContent='';render({category:'YOUR OWN CURRENT',title:'Your reading, your pace',subtitle:'自定义英文文章 · 所有英文单词均可点击',paragraphs:text.split(/\n+/).filter(Boolean).map(p=>[p])});focusArticle();};
 document.querySelector('#saved').onclick=()=>reader.openVocabulary();document.querySelector('#saved-panel').remove();
-document.querySelector('footer small').textContent=previewCandidateVersion?'V'+previewCandidateVersion+' 释义准确度候选 · 网页预览':'V0.7.98 插件交互预览 · 原创示例文章';
+document.querySelector('footer small').textContent=previewCandidateVersion?'V'+previewCandidateVersion+' 释义准确度候选 · 网页预览':'V0.8.0 插件交互预览 · 原创示例文章';
 

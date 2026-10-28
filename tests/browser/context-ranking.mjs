@@ -20,7 +20,7 @@ try{
  await page.evaluate(()=>{const text=document.querySelector('#river').firstChild,range=document.createRange();range.selectNodeContents(text);const selection=window.getSelection();selection.removeAllRanges();selection.addRange(range);});
  await page.locator('lextide-reader #lookup-selection').waitFor({state:'visible'});assert.equal(await page.evaluate(()=>globalThis.__contextCalls.length),1);
  await page.locator('lextide-reader #lookup-selection').click();await page.locator('lextide-reader .zh').filter({hasText:'河岸测试'}).waitFor();assert.equal(await page.evaluate(()=>globalThis.__contextCalls.length),1);
- await page.locator('lextide-reader #sense-choice').selectOption('money');assert.equal(await page.locator('lextide-reader .zh').textContent(),'金融测试');
+ if(await page.locator('lextide-reader .other-senses').getAttribute('open')===null)await page.locator('lextide-reader .other-senses summary').click();await page.locator('lextide-reader #sense-choice').selectOption('money');assert.equal(await page.locator('lextide-reader .zh').textContent(),'金融测试');
  await page.screenshot({path:'test-results/context-selection-desktop.png'});
  await page.keyboard.press('Escape');await page.locator('#unclear').click();await page.locator('lextide-reader .sense-status').filter({hasText:'按原句匹配的词典义项'}).waitFor();assert.equal(await page.locator('lextide-reader #sense-choice').inputValue(),'money');
  await page.setViewportSize({width:390,height:844});const rect=await page.locator('lextide-reader .dict').boundingBox();assert.ok(rect.x>=0&&rect.x+rect.width<=391);

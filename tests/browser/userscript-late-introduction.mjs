@@ -7,10 +7,10 @@ try{for(const scenario of ['engines','diagnostics','reading-menu','vocabulary','
  await page.route('https://course.example/**',r=>r.fulfill({contentType:'text/html',body:'<meta name="viewport" content="width=device-width,initial-scale=1"><main><p>This class is taught here.</p></main>'}));await page.goto('https://course.example/');
  await page.evaluate(()=>{window.__menus={};window.__writes=[];window.__calls=0;const values={};window.GM_getValue=(k,d)=>k==='click-context:v1:introduced'?new Promise(resolve=>window.__introDone=resolve):values[k]??d;window.GM_setValue=(k,v)=>{values[k]=v;__writes.push(k);};window.GM_registerMenuCommand=(name,fn)=>__menus[name]=fn;window.GM_xmlhttpRequest=()=>{__calls++;throw Error('Unexpected fixture request');};});
  await page.evaluate(code);await page.waitForFunction(()=>typeof __introDone==='function'&&Object.keys(__menus).length===4);
- if(scenario==='engines'){await page.evaluate(()=>__menus['点击语境查词：引擎 / 我的 API']());await page.waitForFunction(()=>!document.querySelector('click-context-engines').hidden);}
- else if(scenario==='diagnostics')await page.evaluate(()=>__menus['点击语境查词：连接检查']());
- else if(scenario==='reading-menu')await page.evaluate(()=>__menus['点击语境查词：阅读设置']());
- else if(scenario==='vocabulary')await page.evaluate(()=>__menus['点击语境查词：生词本']());
+ if(scenario==='engines'){await page.evaluate(()=>__menus['语境精读：引擎 / 我的 API']());await page.waitForFunction(()=>!document.querySelector('click-context-engines').hidden);}
+ else if(scenario==='diagnostics')await page.evaluate(()=>__menus['语境精读：连接检查']());
+ else if(scenario==='reading-menu')await page.evaluate(()=>__menus['语境精读：阅读设置']());
+ else if(scenario==='vocabulary')await page.evaluate(()=>__menus['语境精读：生词本']());
  else if(scenario==='reading-pointer')await page.locator('lextide-reader .bubble').click({button:'right'});
  else if(scenario==='reading-keyboard'){await page.locator('lextide-reader .bubble').focus();await page.keyboard.press('Shift+F10');}
  if(scenario.startsWith('reading-')){await page.locator('lextide-reader .panel').waitFor();await page.locator('lextide-reader #words').focus();}

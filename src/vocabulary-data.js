@@ -24,7 +24,7 @@ export function vocabularyOccurrence(entry){
  return matches.length===1?matches[0].index:null;
 }
 export function parseVocabularyBackup(data){
- if(!data||data.version!==2||!Array.isArray(data.words))throw Error('请选择词汐导出的 JSON 生词本（version 2）。');
+ if(!data||data.version!==2||!Array.isArray(data.words))throw Error('请选择语境精读导出的 JSON 生词本（version 2）。');
  if(data.words.length>WORD_LIMIT)throw Error('一次最多导入 5,000 个单词。');
  return data.words.map((entry,index)=>{
   const lemma=String(entry?.lemma||entry?.word||'').toLowerCase().replaceAll('’',"'");

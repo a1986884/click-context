@@ -82,3 +82,11 @@ test('example scope retains the nearest li even when it wraps the dictionary roo
  const page='<li>'+phrasePage('unit',[['N','A synthetic unit.','单位']])+'<div class="examples"><p>A synthetic sentence.</p><p>一个测试句子。</p></div></li>';
  assert.equal(parseCollinsSenses(page).senses[0].examples.length,1);
 });
+
+test('long English definitions retain full display text while keeping the original bounded AI excerpt',()=>{
+ const english='A synthetic definition '+Array(30).fill('with additional original explanatory words').join(' ')+' finishes here.';
+ const entry=parseCollinsSenses(html.replace('A <b>unit</b> is a single thing.',english));
+ assert.equal(entry.senses[0].displayDefinition,english);
+ assert.ok(entry.senses[0].definition.endsWith('…'));
+ assert.equal(entry.senses[0].definition.replace(/…$/,'').split(/\s+/).length,20);
+});

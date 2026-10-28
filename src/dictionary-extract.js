@@ -69,7 +69,7 @@ export function extractCollinsSenses(document,{phrase=null}={}){
    if(/[a-z]/i.test(paragraphs[0])&&/[\u3400-\u9fff]/.test(paragraphs[1]))examples.push({en:short(paragraphs[0],20),zh:paragraphs[1].slice(0,70)});
    if(examples.length===1)break;
   }
-  senses.push({id:'collins-'+(senses.length+1),pos,grammar,reference,definition:short(english,20),zh:zh.slice(0,80)+(zh.length>80?'…':''),examples});
+  senses.push({id:'collins-'+(senses.length+1),pos,grammar,reference,definition:short(english,20),displayDefinition:english.startsWith(pos)&&pos?english.slice(pos.length).trim():english,zh:zh.slice(0,80)+(zh.length>80?'…':''),examples});
  }
  if(!senses.length)throw Object.assign(Error('该 Collins 栏目暂无可读取的英汉双解义项，请查看来源。'),{code:'COLLINS_ENTRY_UNAVAILABLE'});
  return {head,phonetic:clean(root.querySelector('h4 .phonetic')),senses,related,forms,references:references.slice(0,4)};

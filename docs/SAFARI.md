@@ -38,9 +38,9 @@ not establish Safari support.
    paid additional usage without approval.
 5. After a build is available, configure TestFlight testing and invite testers.
    External beta distribution may require Apple's beta review and metadata.
-6. On iPhone install the TestFlight invitation/build, then enable Lextide in
+6. On iPhone install the TestFlight invitation/build, then enable Closeread in
    Safari's extension settings and explicitly choose website access. Safari's
-   browser access and Lextide's own translation networking consent are separate.
+   browser access and Closeread's own translation networking consent are separate.
 7. Verify small-screen and zoomed cards, scrolling vs tapping, selection,
    long-press release, toolbar Popup, provider access, revoked sites, force-close/
    reopen and vocabulary export. Record iOS/Safari versions and screenshots.

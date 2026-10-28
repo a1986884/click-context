@@ -15,7 +15,7 @@ export function configurePreviewContextFiles(files,{endpoint,candidateVersion}){
  const canonical=previewContextEndpoint(endpoint);if(!canonical)return {contextOrigin:undefined,contextEndpoint:undefined};
  if(!/^\d+\.\d+\.\d+$/.test(candidateVersion))throw Error('Invalid preview candidate version');
  const origin=new URL(canonical).origin,connect=previewConnectOrigins(origin);
- for(const path of ['/index.html','/mobile-reader.html']){
+ for(const path of ['/index.html','/mobile-reader.html','/product.html']){
   const file=files[path];if(!file)continue;
   let html=Buffer.from(file.base64,'base64').toString('utf8');
   html=html.replaceAll(DEFAULT_PREVIEW_CONTEXT_ORIGIN,connect).replace('<head>','<head><meta name="click-context-candidate-version" content="'+candidateVersion+'"><meta name="click-context-endpoint" content="'+canonical+'">').replace(/<body(?:\s[^>]*)?>/i,tag=>tag+'<p class="preview-banner" role="note">释义准确度测试 · '+candidateVersion+'（候选）</p>');

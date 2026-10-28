@@ -11,7 +11,7 @@ export async function translate(text,fetcher=fetch,{signal,provider=createTransl
 export async function lookup(word,{online=false,fetcher=fetch,signal}={}) {
  word=normalize(word);if(/^(?:[a-z]\.){2,}$/.test(word))throw Error('已识别缩写 '+word+'；暂无可靠缩写词条');if(!/^[a-z]+(?:['-][a-z]+)*$/.test(word)||word.length>80)throw Error('请输入英文单词');
  const form=resolveForm(word),local=localEntries[form.lemma];
- if(glossary[word]||local){const original=glossary[word]||{};return {...original,word:form.lemma,original:word,lemma:form.lemma,zh:local?.zh||original.zh,phonetic:local?.phonetic||'',definitions:local?.english?[local.pos+' · '+local.english]:[],meanings:local?[{pos:local.pos,definition:local.english}]:[],morphology:form.note,source:'词汐 · 原创演示词库（CC0）',zhSource:'原创演示释义',license:{name:'CC0-1.0'},kind:'local'};}
+ if(glossary[word]||local){const original=glossary[word]||{};return {...original,word:form.lemma,original:word,lemma:form.lemma,zh:local?.zh||original.zh,phonetic:local?.phonetic||'',definitions:local?.english?[local.pos+' · '+local.english]:[],meanings:local?[{pos:local.pos,definition:local.english}]:[],morphology:form.note,source:'语境精读 · 原创演示词库（CC0）',zhSource:'原创演示释义',license:{name:'CC0-1.0'},kind:'local'};}
  if(!online)throw Object.assign(Error('本地词库未收录此词，允许联网后可查询在线词典。'),{code:'ONLINE_REQUIRED'});
  const [zh,en]=await Promise.allSettled([translate(form.lemma,fetcher,{signal}),jsonFetch('https://api.dictionaryapi.dev/api/v2/entries/en/'+encodeURIComponent(form.lemma),fetcher,{signal})]);
  if(zh.status==='rejected'&&en.status==='rejected')throw Error('网络查询失败，请重试');

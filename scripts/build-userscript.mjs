@@ -2,7 +2,7 @@ import {build} from 'esbuild';
 import {mkdir,writeFile,copyFile,readFile} from 'node:fs/promises';
 import {USERSCRIPT_VERSION} from '../userscript/version.js';
 const header=`// ==UserScript==
-// @name         点击语境查词 · Click Context（试用版）
+// @name         语境精读 · Closeread（试用版）
 // @namespace    click-context
 // @version      ${USERSCRIPT_VERSION}
 // @homepageURL  https://click-context-install.aa1986884.workers.dev/
@@ -39,9 +39,9 @@ const header=`// ==UserScript==
 await mkdir('build/userscript',{recursive:true});
 await build({entryPoints:['userscript/main.js'],outfile:'build/userscript/click-context.user.js',bundle:true,format:'iife',target:['safari17.4','chrome110'],banner:{js:header+'\n/*\n'+await readFile('LICENSE','utf8')+'\n*/'},legalComments:'eof',charset:'utf8'});
 await copyFile('LICENSE','build/userscript/LICENSE');
-await writeFile('build/userscript/README.zh-CN.md',`# 点击语境查词 ${USERSCRIPT_VERSION} 油猴试用版
+await writeFile('build/userscript/README.zh-CN.md',`# 语境精读 ${USERSCRIPT_VERSION} 油猴试用版
 
-基于插件 0.7.98 制作，独立分支；不替换已发布插件或线上预览。
+本次为 0.8.0 候选；沿用原用户脚本的命名空间、存储键和更新地址。公开安装页与本地构建的版本可能不同。
 
 本文件对应 ${USERSCRIPT_VERSION}。公开安装页可能仍是旧版本，请核对页面标记；本包是否发布、是否通过真实质量检查，以 release.json 与 HANDOFF.zh-CN.md 为准。试本包请直接导入同目录 click-context.user.js。
 

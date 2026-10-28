@@ -39,13 +39,13 @@ try{
   await page.locator('lextide-reader #translate-selection').waitFor();assert.equal(await page.evaluate(()=>__requests.length),2);
   await page.locator('lextide-reader #translate-selection').click();await page.waitForFunction(()=>document.querySelector('lextide-reader').shadowRoot.querySelector('#selection-result').textContent.includes('他们坐'));
   await page.locator('lextide-reader #close-selection').click();
-  await page.evaluate(()=>__menus['点击语境查词：阅读设置']());await page.locator('lextide-reader #bilingual-enabled').check();await page.locator('lextide-reader .panel .close').click();
+  await page.evaluate(()=>__menus['语境精读：阅读设置']());await page.locator('lextide-reader #bilingual-enabled').check();await page.locator('lextide-reader .panel .close').click();
   await page.waitForFunction(()=>document.querySelector('main').textContent.includes('清晨很安静'));
   await page.locator('lextide-reader .bubble').click();await page.waitForFunction(()=>document.querySelector('main').innerHTML===__originalHTML);
   assert.equal(await page.evaluate(()=>document.querySelector('#original')===__original),true);
   assert.equal(await page.locator('lextide-reader .bubble').getAttribute('aria-pressed'),'false');assert.equal(await page.locator('main .lextide-translation').count(),0);
   await page.waitForFunction(()=>{const prefs=Object.entries(__values).filter(([key])=>key.includes('prefs:')).map(([,value])=>value);return prefs.length>0&&prefs.every(value=>value.words===false&&value.enabled===false);});
-  const pausedRequests=await page.evaluate(()=>__requests.length);await page.evaluate(()=>__menus['点击语境查词：阅读设置']());
+  const pausedRequests=await page.evaluate(()=>__requests.length);await page.evaluate(()=>__menus['语境精读：阅读设置']());
   assert.equal(await page.locator('lextide-reader #words').isChecked(),true,'paused settings retain the selected lookup feature');assert.equal(await page.locator('lextide-reader #bilingual-enabled').isChecked(),true,'paused settings retain the selected body feature');assert.equal(await page.evaluate(()=>__requests.length),pausedRequests,'opening paused settings must not send text');
   await page.locator('lextide-reader .panel .close').click();await page.locator('lextide-reader .bubble').click();await page.waitForFunction(()=>document.querySelector('main').textContent.includes('清晨很安静'));
   assert.equal(await page.locator('lextide-reader .bubble').getAttribute('aria-pressed'),'true');assert.equal(await page.locator('lextide-reader #bilingual-enabled').isChecked(),true);assert.equal(await page.evaluate(()=>document.querySelector('#original')===__original),true);
@@ -55,7 +55,7 @@ try{
   // A new mount must remain off even when previous settings enabled translation.
   const stored=await page.evaluate(()=>structuredClone(__values));for(const key of Object.keys(stored))if(key.includes('prefs:'))stored[key]={...stored[key],words:true,enabled:true,mode:'bilingual'};
   await page.goto('https://article.example/second');await page.evaluate(({api,stored})=>{window.__values=stored;window.__requests=[];window.__menus={};const get=async(k,d)=>__values[k]??d,set=async(k,v)=>__values[k]=v,request=()=>__requests.push('unexpected');window.GM={getValue:get,setValue:set,xmlHttpRequest:request,registerMenuCommand:(name,fn)=>__menus[name]=fn};},{api,stored});await page.evaluate(code);await page.waitForFunction(()=>Object.keys(__menus).length===4);
-  assert.equal(await page.locator('lextide-reader .panel').isVisible(),false);await page.evaluate(()=>__menus['点击语境查词：阅读设置']());
+  assert.equal(await page.locator('lextide-reader .panel').isVisible(),false);await page.evaluate(()=>__menus['语境精读：阅读设置']());
   assert.equal(await page.locator('lextide-reader #words').isChecked(),false);assert.equal(await page.locator('lextide-reader #bilingual-enabled').isChecked(),false);assert.equal(await page.evaluate(()=>__requests.length),0);
   await page.locator('lextide-reader #vocabulary').click();await page.locator('lextide-reader .vocab').waitFor();assert.match(await page.locator('lextide-reader .vocab').textContent(),/bank/);
   await page.screenshot({path:`test-results/userscript-${api}-mobile.png`});assert.deepEqual(errors,[]);report.checks.push(api+': persisted vocabulary retained, next-page defaults off, zero browser errors');await page.close();

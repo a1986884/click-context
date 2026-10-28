@@ -37,7 +37,7 @@ async function tabFor(sender){return {id:sender.tab.id,url:sender.url||sender.ta
 async function registered(){
  const {policy}=await state.read();const scripts=await chrome.scripting.getRegisteredContentScripts();
  const wanted=[];for(const [origin,site] of Object.entries(policy.sites))if(site.allowed&&!site.excluded&&await chrome.permissions.contains({origins:[origin+'/*']}))wanted.push(origin+'/*');
- // One registration owned by Lextide. Serial reconciliation prevents duplicate IDs.
+ // One registration owned by Closeread. Serial reconciliation prevents duplicate IDs.
  if(scripts.some(s=>s.id==='lextide-sites'))await chrome.scripting.unregisterContentScripts({ids:['lextide-sites']});
  if(wanted.length)await chrome.scripting.registerContentScripts([{id:'lextide-sites',matches:wanted,js:['content.js'],runAt:'document_idle',persistAcrossSessions:true}]);
 }
@@ -106,7 +106,7 @@ async function handleMessage(m,sender,controller,job){
  if(m.type==='cancel'){jobs.get(sender.tab.id+':'+m.requestId)?.controller.abort();return null;}
  if(content&&!current.authorized)throw Error('此网站未授权或扩展已暂停');
  if(m.type==='open-engines'&&content){await chrome.tabs.create({url:chrome.runtime.getURL('engines.html')});return null;}
- if(m.type==='open-controls'&&content){if(!chrome.action?.openPopup)throw Error('请点击浏览器工具栏中的点击语境查词图标，开启此网站联网查询。');await chrome.action.openPopup({windowId:sender.tab.windowId});return null;}
+ if(m.type==='open-controls'&&content){if(!chrome.action?.openPopup)throw Error('请点击浏览器工具栏中的语境精读图标，开启此网站联网查询。');await chrome.action.openPopup({windowId:sender.tab.windowId});return null;}
  if(m.type==='open-vocabulary'&&content){await chrome.tabs.create({url:chrome.runtime.getURL('vocabulary.html')});return null;}
  if(m.type==='store'){
   const allowed=ui?['words','removeWord','updateWord','vocabularyDrafts','saveVocabularyDraft','removeVocabularyDraft','importWords']:['prefs','savePrefs','words','saveWord','removeWord','cacheGet','cacheSet','clearCache'];
