@@ -1,6 +1,6 @@
 # Privacy policy draft — current plugin candidate
 
-Lextide code has no user account, analytics instrumentation, cloud vocabulary sync or server-side vocabulary database. Settings, saved vocabulary and translation cache remain in the browser profile. They are plaintext local data; export vocabulary before uninstalling or replacing a profile. This draft describes current code and does not replace Cloudflare or dictionary-provider terms.
+Closeread code has no user account, analytics instrumentation, cloud vocabulary sync or server-side vocabulary database. Settings, saved vocabulary and translation cache remain in the browser profile. They are plaintext local data; export vocabulary before uninstalling or replacing a profile. This draft describes current code and does not replace Cloudflare or dictionary-provider terms.
 
 ## Activation and requests
 
