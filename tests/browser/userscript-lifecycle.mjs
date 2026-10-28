@@ -21,7 +21,7 @@ try{for(const mode of ['read','write'])for(const stage of ['dictionary','context
  return {abort(){__aborts++;d.onabort();}};};
  },{mode,stage,html});
  await page.evaluate(code);await page.waitForFunction(()=>__stalled&&Object.keys(__menus).length===4);assert.equal(await page.evaluate(()=>__requests.length),0);
- await page.evaluate(()=>__menus['点击语境查词：阅读设置']());await page.locator('lextide-reader #words').check();await page.locator('lextide-reader .panel .close').click();await page.locator('#word').click();await page.waitForFunction(()=>typeof __late==='function');
+ await page.evaluate(()=>__menus['语境精读：阅读设置']());await page.locator('lextide-reader #words').check();await page.locator('lextide-reader .panel .close').click();await page.locator('#word').click();await page.waitForFunction(()=>typeof __late==='function');
  const before=await page.evaluate(()=>__requests.length);await page.evaluate(()=>window.dispatchEvent(new Event('pagehide')));
  assert.equal(await page.evaluate(()=>__aborts),1,'pagehide must cancel the pending request while introduction storage is stalled');assert.equal(await page.locator('lextide-reader .dict').isVisible(),false);
  await page.evaluate(async()=>{__introDone(false);for(let i=0;i<5;i++)await Promise.resolve();__late();__recovered=true;window.dispatchEvent(new Event('pageshow'));});
