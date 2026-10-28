@@ -13,13 +13,13 @@ import {USERSCRIPT_VERSION} from './version.js';
 
 (async()=>{
  if(window.top!==window.self||document.querySelector('lextide-reader'))return;
- if(typeof AbortSignal.any!=='function'||typeof AbortSignal.timeout!=='function'){alert('点击语境查词：当前浏览器缺少取消请求接口，请升级至 iOS / Safari 17.4 或更新版本。');return;}
+ if(typeof AbortSignal.any!=='function'||typeof AbortSignal.timeout!=='function'){alert('语境精读：当前浏览器缺少取消请求接口，请升级至 iOS / Safari 17.4 或更新版本。');return;}
  const modern=typeof GM==='object'?GM:null;
  const request=typeof GM_xmlhttpRequest==='function'?details=>GM_xmlhttpRequest(details):modern?.xmlHttpRequest?.bind(modern);
  const getValue=typeof GM_getValue==='function'?async(...args)=>GM_getValue(...args):modern?.getValue?.bind(modern);
  const setValue=typeof GM_setValue==='function'?async(...args)=>GM_setValue(...args):modern?.setValue?.bind(modern);
  const register=typeof GM_registerMenuCommand==='function'?GM_registerMenuCommand:modern?.registerMenuCommand?.bind(modern);
- if(!request||!getValue||!setValue){alert('点击语境查词：此管理器未提供联网或脚本存储接口，请使用兼容 Tampermonkey 的管理器。');return;}
+ if(!request||!getValue||!setValue){alert('语境精读：此管理器未提供联网或脚本存储接口，请使用兼容 Tampermonkey 的管理器。');return;}
  const fetcher=createGMFetch(request),store=createStore(createGMAdapter({getValue,setValue,origin:location.origin}));
  const readPrefs=store.prefs;
  // Every page load starts offline in the product sense: no lookup or body work
@@ -55,10 +55,10 @@ import {USERSCRIPT_VERSION} from './version.js';
  const note=document.createElement('p');note.className='muted';note.textContent='油猴试用版 '+USERSCRIPT_VERSION+' · 每次打开网页默认关闭。开启后，单词发给有道公开词条，原句和候选词义发给你选择的语境 AI（默认内置 Cloudflare AI）；词条栏目不可读时会查询预览词条 API。点词语境、选文和正文分别选择服务，发送各自需要的文本，不自动切换。生词与 API 配置保存在脚本管理器中。';
  reader.shadow.querySelector('.panel .top').after(note);
  const diagnosticsButton=document.createElement('button');diagnosticsButton.id='connection-diagnostics';diagnosticsButton.type='button';diagnosticsButton.textContent='连接检查 / 诊断';diagnosticsButton.onclick=()=>diagnosticsPanel.open();reader.shadow.querySelector('.panel .row').append(diagnosticsButton);
- register?.('点击语境查词：阅读设置',()=>{dismissAutomaticIntroduction();enginePanel.close();diagnosticsPanel.close();reader.openSettings();});
- register?.('点击语境查词：生词本',()=>{dismissAutomaticIntroduction();enginePanel.close();diagnosticsPanel.close();return reader.openVocabulary();});
- register?.('点击语境查词：引擎 / 我的 API',()=>enginePanel.open());
- register?.('点击语境查词：连接检查',()=>diagnosticsPanel.open());
+ register?.('语境精读：阅读设置',()=>{dismissAutomaticIntroduction();enginePanel.close();diagnosticsPanel.close();reader.openSettings();});
+ register?.('语境精读：生词本',()=>{dismissAutomaticIntroduction();enginePanel.close();diagnosticsPanel.close();return reader.openVocabulary();});
+ register?.('语境精读：引擎 / 我的 API',()=>enginePanel.open());
+ register?.('语境精读：连接检查',()=>diagnosticsPanel.open());
  // Register navigation cleanup before optional introduction storage can stall.
  let pageLeft=false;
  window.addEventListener('pagehide',()=>{pageLeft=true;engineSync.stop();dismissAutomaticIntroduction();reader.restore();enginePanel.close({restoreFocus:false});diagnosticsPanel.close({restoreFocus:false});});
@@ -74,4 +74,4 @@ import {USERSCRIPT_VERSION} from './version.js';
   reader.openSettings();
   try{await setValue('click-context:v1:introduced',true);}catch{/* Do not reset storage or retry a write which may have completed. */}
  }
-})().catch(()=>{alert('点击语境查词未能启动，请检查脚本管理器权限后刷新网页。');});
+})().catch(()=>{alert('语境精读未能启动，请检查脚本管理器权限后刷新网页。');});
