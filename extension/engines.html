@@ -1,9 +1,9 @@
 <!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>语境精读 · 翻译引擎</title><link rel="stylesheet" href="engines.css"></head><body><main>
-<header><p class="page-kicker">语境精读 / 阅读设置</p><h1>为两种阅读，选择合适的引擎。</h1><p>正文和选文分别选择；Collins 词典卡与 AI 语境释义保留。</p></header>
+<header><p class="page-kicker">语境精读 / 阅读设置</p><h1>为两种阅读，选择合适的引擎。</h1><p>查词 AI 负责点词和短语查义；翻译引擎负责正文与选文翻译。</p></header>
 <p id="status" role="status" aria-live="polite">正在读取…</p><p id="error" role="alert" hidden></p>
 <form id="settings"><fieldset id="controls" disabled>
-<section class="choices"><label for="body-engine">正文翻译引擎<select id="body-engine"></select></label><label for="selection-engine">选文翻译引擎<select id="selection-engine"></select></label></section>
-<section><p class="page-kicker">连接自己的服务</p><h2>我的 API 配置</h2><p>AI 聊天会员通常不含 API 额度。谷歌、微软和 DeepL 使用各自官方 API；自定义服务按所填地址发送文本，不自动切换其他服务。</p>
+<section class="choices"><label for="body-engine">翻译引擎<select id="body-engine"></select></label><label for="context-engine">查词与语境 AI<select id="context-engine"></select></label></section>
+<section><p class="page-kicker">连接自己的服务</p><h2>我的 API 配置</h2>
 <div class="toolbar"><label for="profile">配置<select id="profile"></select></label><button id="add" type="button">新增配置</button><button id="remove" type="button">移除配置</button></div>
 <div id="editor" hidden><label for="preset">服务<select id="preset"></select></label><label for="name">配置名称<input id="name" maxlength="64" autocomplete="off"></label>
 <label for="endpoint">API 地址<input id="endpoint" type="url" autocomplete="off" spellcheck="false" placeholder="https://example.com/v1/chat/completions"></label>
