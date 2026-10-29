@@ -8,7 +8,7 @@ const header=`// ==UserScript==
 // @homepageURL  https://click-context-install.aa1986884.workers.dev/
 // @updateURL    https://click-context-install.aa1986884.workers.dev/click-context.meta.js
 // @downloadURL  https://click-context-install.aa1986884.workers.dev/click-context.user.js
-// @description  点一下英文单词，查看它在原句中的意思。含 Collins 词卡、选文翻译、正文双语和生词本；每页默认关闭，开启后按需联网。
+// @description  点一下英文单词，查看它在原句中的意思。含 Collins 词卡、选文翻译、正文双语和生词本；支持记住网站设置、排除网站与全局暂停。
 // @license      MIT
 // @match        https://*/*
 // @match        http://*/*
