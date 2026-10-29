@@ -1,10 +1,10 @@
 # 语境精读 · Closeread 用户脚本
 
-为英语学习者设计的网页精读插件。当前源码为 **0.8.0 候选**，公开安装页可能仍是旧版，安装前请核对页面和脚本头版本。
+为英语学习者设计的网页精读插件。当前源码为 **0.8.0 候选**；公开安装服务已提供 **0.8.0 用户脚本试用版**（2026-10-29 核验，来源提交 `f4264c2`），尚无 GitHub Release。安装前请核对[版本信息](https://click-context-install.aa1986884.workers.dev/release.json)和脚本头版本。
 
 ## 安装与构建
 
-- [公开安装页](https://click-context-install.aa1986884.workers.dev/)：需先安装并启用兼容的脚本管理器；公开地址未在本次同步更新。
+- [公开安装页](https://click-context-install.aa1986884.workers.dev/)：需先安装并启用兼容的脚本管理器；公开地址当前提供 0.8.0 试用版；本次文档修订不代表重新部署。
 - 构建当前源码：在项目根目录运行 `npm ci`、`npm run build:userscript`，将 `build/userscript/click-context.user.js` 导入管理器。
 - 脚本命名空间、文件名、更新地址及存储键保持兼容，已有收藏和设置无需迁移。
 
@@ -14,4 +14,4 @@
 
 网页中的预览与模拟 GM 测试不等于真实脚本管理器或 iPhone 验收。AI 可能判断错误，候选提示保留。账号中的聊天会员通常不含 API 额度，真实 API 接入取决于凭据与服务。
 
-[完整功能与隐私说明](../README.md) · [引擎与 API](../docs/TRANSLATION_ENGINES.zh-CN.md) · [改版前全部历史说明](../docs/legacy/userscript-before-0.8.zh-CN.md)
+[实际发布状态](../docs/RELEASE_STATUS.zh-CN.md) · [完整功能与隐私说明](../README.md) · [引擎与 API](../docs/TRANSLATION_ENGINES.zh-CN.md) · [改版前全部历史说明](../docs/legacy/userscript-before-0.8.zh-CN.md)

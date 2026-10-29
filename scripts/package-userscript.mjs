@@ -66,6 +66,6 @@ if(candidate)Object.assign(metadata,{kind:'userscript candidate; live quality NO
 await writeFile(join(out,'release.json'),JSON.stringify(metadata,null,2)+'\n');
 const files={};async function scan(dir,relative=''){for(const item of await readdir(dir,{withFileTypes:true})){const name=relative?relative+'/'+item.name:item.name;if(item.isDirectory())await scan(join(dir,item.name),name);else if(item.isFile())files[name]=sha(await readFile(join(dir,item.name)));else throw Error('Unexpected artifact');}}
 await scan(out);await writeFile(join(out,'SHA256.json'),JSON.stringify(files,null,2)+'\n');
-const zip=resolve('/workspace/releases/ClickContext_'+version+'_Userscript'+(candidate?'_Candidate':unpublished?'_Unpublished':'')+'.zip');execFileSync('zip',['-q','-r',zip,'.'],{cwd:out});execFileSync('unzip',['-tq',zip],{stdio:'pipe'});
+const zip=resolve('/workspace/releases/Closeread_'+version+'_Userscript'+(candidate?'_Candidate':unpublished?'_Unpublished':'')+'.zip');execFileSync('zip',['-q','-r',zip,'.'],{cwd:out});execFileSync('unzip',['-tq',zip],{stdio:'pipe'});
 for(const [name,expected]of Object.entries(files))if(sha(execFileSync('unzip',['-p',zip,name],{maxBuffer:32*1024*1024}))!==expected)throw Error('ZIP hash mismatch '+name);
 console.log(JSON.stringify({version,commit,out,zip,verifiedFiles:Object.keys(files).length,scriptSHA256:fingerprint,unitTests:metadata.unitTests}));
