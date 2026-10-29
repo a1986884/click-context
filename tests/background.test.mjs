@@ -172,3 +172,19 @@ test('background validates sender/frame/UI and independently enforces stored con
  });
 
 });
+
+test('extension keyless choices route both scopes, enforce host permissions and retain API configuration',async()=>{
+ const originalFetch=globalThis.fetch,contains=api.permissions.contains,before=structuredClone(engineFixture),engineUI={id:api.runtime.id,url:api.runtime.getURL('engines.html')},calls=[];
+ try{
+  const settings=structuredClone(before);settings.body='google-free';settings.selection='microsoft-free';
+  assert.equal((await send({type:'engines:save',settings},engineUI)).ok,true);
+  await send({type:'control',action:'enable',tabId:1,prefs:{enabled:true,words:true,mode:'bilingual'}});
+  const snapshot=(await send({type:'bootstrap'},content(1))).data;
+  globalThis.fetch=async(url,options)=>{calls.push({url,options});return url.includes('translate.googleapis.com')?Response.json([[['河流很安静。','The river is quiet.']]]):url.endsWith('/translator')?new Response('IG:"TEST123";params_AbusePreventionHelper=[123,"public-token",3600000];<div data-iid="translator.5023"></div>'):Response.json([{translations:[{to:'zh-Hans',text:'河水清澈。'}]}]);};
+  const bodyResult=await send({type:'translate',text:'The river is quiet.',online:true,requestId:'web-body',engineKey:snapshot.engines.body.cacheKey},content(1));assert.equal(bodyResult.data,'河流很安静。',JSON.stringify(bodyResult));
+  assert.equal((await send({type:'selection',text:'The water is clear.',online:true,requestId:'web-selection',engineKey:snapshot.engines.selection.cacheKey},content(1))).data,'河水清澈。');
+  assert.equal(calls.length,3);assert.ok(calls.every(c=>c.options.credentials==='omit'&&!c.options.headers?.Authorization));assert.deepEqual(engineFixture.profiles,before.profiles);
+  api.permissions.contains=async({origins})=>!origins.includes('https://translate.googleapis.com/*');
+  const denied=await send({type:'translate',text:'A different river.',online:true,requestId:'web-denied',engineKey:snapshot.engines.body.cacheKey},content(1));assert.equal(denied.code,'ENGINE_CONFIG');assert.equal(calls.length,3);
+ }finally{api.permissions.contains=contains;globalThis.fetch=originalFetch;await send({type:'engines:save',settings:before},engineUI);}
+});
