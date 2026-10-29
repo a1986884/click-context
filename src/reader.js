@@ -21,7 +21,7 @@ export function readablePOS(pos=''){
  if(/^PHRASE(?:-|$)/.test(value))return 'phr.';
  return ({PREP:'prep.',CONJ:'conj.',PRON:'pron.',DET:'det.',EXCLAM:'interj.','PHRASAL VERB':'phr. v.'})[value]||'';
 }
-export function mountReader({root=document.body,transport=async(type,text,online,options)=>type==='lookup'?lookup(text,{online,...options}):type==='context'?resolveContext(options.context,options):translate(text,fetch,options),demo=false,store=demoStore(),schedulerOptions={},contextRevision,onOpenVocabulary,onOpenEngines,onOpenContextEngines,isAuxiliaryUIEvent=()=>false,engines=publicEngineSettings(),dictionaryNotice='Collins 英汉双解（有道公开词条）'}={}){
+export function mountReader({root=document.body,transport=async(type,text,online,options)=>type==='lookup'?lookup(text,{online,...options}):type==='context'?resolveContext(options.context,options):translate(text,fetch,options),demo=false,store=demoStore(),schedulerOptions={},contextRevision,onOpenVocabulary,onOpenEngines,onOpenContextEngines,isAuxiliaryUIEvent=()=>false,canActivate=()=>true,activationMessage=()=>'',engines=publicEngineSettings(),dictionaryNotice='Collins 英汉双解（有道公开词条）'}={}){
  const host=document.createElement('lextide-reader');document.body.append(host);const shadow=host.attachShadow({mode:'open'});
  shadow.innerHTML=`<style>${readerCSS}</style>
  <section class="panel" hidden role="dialog" aria-label="语境精读阅读设置"><div class="top"><b>语境精读 · 阅读设置</b><button class="close" aria-label="关闭设置">×</button></div>
@@ -117,15 +117,15 @@ export function mountReader({root=document.body,transport=async(type,text,online
   if(prefs.enabled&&prefs.mode!=='original')await translator.start(prefs.mode,prefs.online,prefs.translationUnit);else report('原文模式 · '+(prefs.words?'查词开启，链接不跳转':'查词关闭，链接正常'));
  }
  const ready=store.prefs().then(p=>{if(destroyed)return;prefs={...p,online:true};void apply();}).catch(()=>{report('无法读取偏好，使用默认设置');update();});
- async function setEnabled(value){await ready;if(destroyed)return;if(pausedFeatures){pausedFeatures.enabled=Boolean(value)&&prefs.mode!=='original';update();return;}if(value&&!prefs.enabled&&prefs.mode!=='original')bodyPolicyPending=true;prefs.enabled=Boolean(value);if(!prefs.enabled)await Promise.all([apply(),persist()]);else{update();await persist();await apply();}}
- async function setMode(mode){if(!['original','bilingual','translated'].includes(mode))return;await ready;if(destroyed)return;const activation=mode!=='original'&&(!prefs.enabled||prefs.mode==='original');prefs.mode=mode;if(pausedFeatures){pausedFeatures.enabled=mode!=='original';update();await persist();return;}if(activation)bodyPolicyPending=true;prefs.enabled=true;applyRevision++;translator.stop();update();await persist();await apply();}
+ async function setEnabled(value){await ready;if(destroyed)return;if(value&&!canActivate()){report(activationMessage());return;}if(pausedFeatures){pausedFeatures.enabled=Boolean(value)&&prefs.mode!=='original';update();return;}if(value&&!prefs.enabled&&prefs.mode!=='original')bodyPolicyPending=true;prefs.enabled=Boolean(value);if(!prefs.enabled)await Promise.all([apply(),persist()]);else{update();await persist();await apply();}}
+ async function setMode(mode){if(!['original','bilingual','translated'].includes(mode))return;await ready;if(destroyed)return;if(mode!=='original'&&!canActivate()){report(activationMessage());return;}const activation=mode!=='original'&&(!prefs.enabled||prefs.mode==='original');prefs.mode=mode;if(pausedFeatures){pausedFeatures.enabled=mode!=='original';update();await persist();return;}if(activation)bodyPolicyPending=true;prefs.enabled=true;applyRevision++;translator.stop();update();await persist();await apply();}
  async function setTranslationUnit(value){if(!['paragraph','sentence'].includes(value))return;await ready;if(destroyed)return;prefs.translationUnit=value;await Promise.all([apply(),persist()]);}
- async function setWords(value,{activate=false}={}){await ready;if(destroyed)return;if(pausedFeatures&&!(activate&&value)){pausedFeatures.words=Boolean(value);update();return;}if(pausedFeatures)pausedFeatures=null;if(value&&!prefs.words)lookupPolicyPending=true;prefs.words=Boolean(value);if(!value)close();update();if(!prefs.enabled||prefs.mode==='original')report('原文模式 · '+(prefs.words?'查词开启，链接不跳转':'查词关闭，链接正常'));await persist();}
+ async function setWords(value,{activate=false}={}){await ready;if(destroyed)return;if(value&&!canActivate()){report(activationMessage());return;}if(pausedFeatures&&!(activate&&value)){pausedFeatures.words=Boolean(value);update();return;}if(pausedFeatures)pausedFeatures=null;if(value&&!prefs.words)lookupPolicyPending=true;prefs.words=Boolean(value);if(!value)close();update();if(!prefs.enabled||prefs.mode==='original')report('原文模式 · '+(prefs.words?'查词开启，链接不跳转':'查词关闭，链接正常'));await persist();}
  // Main-switch pause is distinct from the chosen feature configuration.
  // Keep it only in this reader session; page reload retains its existing policy.
  function toggleReader(){
   const job=toggleQueue.then(async()=>{
-   await ready;if(destroyed)return;
+   await ready;if(destroyed)return;if(!canActivate()){openSettings();report(activationMessage());return;}
    if(prefs.words||prefs.enabled&&prefs.mode!=='original'){
     pausedFeatures={words:prefs.words,enabled:prefs.enabled&&prefs.mode!=='original'};
     prefs.words=false;prefs.enabled=false;applyRevision++;bodyPolicyPending=false;lookupPolicyPending=false;translator.stop();close();closeSettings();window.speechSynthesis?.cancel();update();report('已暂停 · 原文阅读，功能设置已保留');void persist();
