@@ -28,7 +28,7 @@ export default {async fetch(request,env){
  // Dedicated anonymous public API for user-installed scripts on arbitrary sites.
  // Existing extension routes keep their origin policy; quotas/schema/timeouts are shared.
  const origin=request.headers.get('Origin')||'';
- const allowed=userscript||!origin||/^chrome-extension:\/\/[a-p]{32}$/.test(origin)||origin==='https://v04-preview.lextide.pages.dev'||/^https:\/\/[a-f0-9]+\.lextide\.pages\.dev$/.test(origin);
+ const allowed=userscript||!origin||/^chrome-extension:\/\/[a-p]{32}$/.test(origin)||origin==='https://lextide.pages.dev'||origin==='https://v04-preview.lextide.pages.dev'||/^https:\/\/[a-f0-9]+\.lextide\.pages\.dev$/.test(origin);
  const headers={'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Vary':'Origin',...(allowed&&(origin||userscript)?{'Access-Control-Allow-Origin':userscript?'*':origin,'Access-Control-Allow-Headers':'Content-Type','Access-Control-Allow-Methods':'POST, OPTIONS'}:{})};
  const reply=(body,status=200)=>Response.json(body,{status,headers});
  if(!allowed)return reply({ok:false,error:'来源不受支持'},403);
