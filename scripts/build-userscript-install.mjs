@@ -6,7 +6,7 @@ import {USERSCRIPT_VERSION} from '../userscript/version.js';
 const script=await readFile('build/userscript/click-context.user.js','utf8'),license=await readFile('LICENSE','utf8');
 const origin='https://click-context-install.aa1986884.workers.dev';
 if(!script.includes('// @updateURL    '+origin+'/click-context.meta.js')||!script.includes('// @downloadURL  '+origin+'/click-context.user.js'))throw Error('Installer metadata does not match public URLs');
-const source=sourceState(),release={version:USERSCRIPT_VERSION,kind:'userscript installation trial',scriptSHA256:createHash('sha256').update(script).digest('hex'),tampermonkeyInstalled:false,iPhoneAcceptancePassed:false,realVendorAPIsTested:false};
+const source=sourceState(),release={version:USERSCRIPT_VERSION,kind:'userscript installation trial',sourceCommit:source.commit,scriptSHA256:createHash('sha256').update(script).digest('hex'),tampermonkeyInstalled:false,iPhoneAcceptancePassed:false,realVendorAPIsTested:false};
 await mkdir('build/userscript-install',{recursive:true});
 await build({stdin:{contents:`import {createUserscriptInstallWorker} from './scripts/userscript-install-worker.mjs';export default createUserscriptInstallWorker(${JSON.stringify({script,license,release})});`,resolveDir:process.cwd()},outfile:'build/userscript-install/worker.mjs',bundle:true,format:'esm',platform:'browser',target:'es2022',legalComments:'none',minify:true,charset:'utf8'});
 const module=await readFile('build/userscript-install/worker.mjs');
