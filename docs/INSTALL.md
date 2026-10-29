@@ -1,4 +1,10 @@
-# Desktop installation and controls
+# 语境精读 · Closeread 安装说明
+
+截至 2026-10-29，0.8.0 源码已合并 main，公开安装服务已提供 0.8.0 用户脚本试用版（来源提交 f4264c2）。GitHub 尚无 Release；这不代表稳定版、原生扩展或移动端验收通过。
+
+[公开安装页](https://click-context-install.aa1986884.workers.dev/) · [用户脚本说明](../userscript/README.zh-CN.md) · [发布状态与核验范围](RELEASE_STATUS.zh-CN.md)
+
+## Desktop installation and controls
 
 Extract the Chromium ZIP (`lextide-chromium-<version>.zip`) and verify its SHA-256
 against the accompanying sha256.json. In desktop Chrome open chrome://extensions
