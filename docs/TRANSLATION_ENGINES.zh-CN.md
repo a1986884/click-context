@@ -2,6 +2,12 @@
 
 用户已确认：保留 Collins 词典卡，另加选中文本翻译；正文与选文各选引擎，接入自带 API。下一阶段不再只围绕开源检查迭代。
 
+## 免填 Key 翻译
+
+正文和选文可直接选择“谷歌翻译（免填 Key）”或“微软翻译（免填 Key）”，保存后使用。Google Cloud Translation、Microsoft Azure Translator 仍作为自带 API 配置保留。点词语境 AI 单独选择。
+
+免填 Key 服务使用 Google 网页翻译接口及 Bing Translator 网页接口；微软页面参数仅在内存中短期缓存，请求不携带用户 Cookie。请求按 600 字符分段，沿用数值校验、取消和引擎缓存隔离。协议核对参考 [Readest 的 Microsoft 适配源码](https://github.com/readest/readest/blob/main/apps/readest-app/src/services/translators/providers/azure.ts)及 [共享协议参数](https://github.com/readest/readest/blob/main/apps/readest-app/src/services/translators/providers/azureShared.ts)。
+
 ## 产品范围
 
 - 正文翻译与选文翻译分别选择配置，能够选择同一服务的不同模型/密钥配置。
