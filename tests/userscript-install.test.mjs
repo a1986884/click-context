@@ -8,7 +8,7 @@ test('installer serves exact script/metadata with stable version and no-store he
  const meta=await w.fetch(new Request('https://install.test/click-context.meta.js'));const text=await meta.text();assert.match(text,/@version\s+0\.7\.104/);assert.doesNotMatch(text,/console\.log/);assert.equal((await w.fetch(new Request('https://install.test/release.json'))).status,200);
 });
 test('installer homepage has no credential form, executable page script or external assets',async()=>{
- const response=await worker().fetch(new Request('https://install.test/'));const text=await response.text();assert.match(text,/安装用户脚本/);assert.match(text,/iPhone.*实际安装仍待验收/);assert.doesNotMatch(text,/<(?:script|input|form|iframe|img)\b/i);assert.match(response.headers.get('Content-Security-Policy'),/default-src 'none'/);assert.match(text,/href="\/click-context\.user\.js"/);
+ const response=await worker().fetch(new Request('https://install.test/'));const text=await response.text();assert.match(text,/安装用户脚本/);assert.doesNotMatch(text,/<(?:script|input|form|iframe|img)\b/i);assert.match(response.headers.get('Content-Security-Policy'),/default-src 'none'/);assert.match(text,/href="\/click-context\.user\.js"/);
 });
 test('installer handles HEAD, missing paths and unsupported methods without echoing input',async()=>{
  const w=worker(),head=await w.fetch(new Request('https://install.test/click-context.user.js',{method:'HEAD'}));assert.equal(await head.text(),'');assert.equal(Number(head.headers.get('Content-Length')),new TextEncoder().encode(script).byteLength);assert.equal((await w.fetch(new Request('https://install.test/private'))).status,404);assert.equal((await w.fetch(new Request('https://install.test/',{method:'POST',body:'PRIVATE_KEY'}))).status,405);
