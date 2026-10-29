@@ -1,6 +1,6 @@
 # 语境精读 · Closeread 安装说明
 
-截至 2026-10-29，0.8.0 源码已合并 main，公开安装服务已提供 0.8.0 用户脚本试用版（来源提交 f4264c2）。GitHub 尚无 Release；这不代表稳定版、原生扩展或移动端验收通过。
+当前版本：0.8.0。用户脚本可通过公开安装页安装，桌面扩展按下方步骤加载。
 
 [公开安装页](https://click-context-install.aa1986884.workers.dev/) · [用户脚本说明](../userscript/README.zh-CN.md) · [发布状态与核验范围](RELEASE_STATUS.zh-CN.md)
 
