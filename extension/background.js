@@ -1,4 +1,4 @@
-import {resolveContext} from './src/context-meaning.js';
+import {CONTEXT_ENDPOINT,resolveContext} from './src/context-meaning.js';
 import {translate} from './src/core.js';
 import {createDictionaryLookup} from './dictionary-lookup.js';
 import {cacheWordLookup} from './src/dictionary-cache.js';
@@ -10,7 +10,7 @@ import {getExtensionAPI} from './src/browser-api.js';
 import {createEngineVault} from './src/engine-vault.js';
 import {webTranslationEngine,publicEngineSettings,engineSettingsForUI} from './src/engine-profiles.js';
 import {createWebTranslator} from './src/web-translators.js';
-import {executeEngineTranslation} from './src/engine-executor.js';
+import {executeEngineContext,executeEngineTranslation} from './src/engine-executor.js';
 import {TRANSLATION_ENDPOINT} from './src/translation-service.js';
 import {CLIENT_TRANSLATION_CACHE_VERSION} from './src/translation-client-validation.js';
 import {createPermissionRevocations} from './src/permission-revocations.js';
@@ -18,15 +18,15 @@ const chrome=getExtensionAPI();
 if(!chrome.storage.session)throw Error('当前浏览器不支持会话存储，请升级浏览器');
 const lookupCollins=cacheWordLookup(createDictionaryLookup(chrome),{storage:chrome.storage.session});
 const state=extensionState(chrome.storage.local,chrome.storage.session);
-const webTranslator=createWebTranslator({fetcher:(...args)=>fetch(...args)});const engines=createEngineVault();const permissionRevocations=createPermissionRevocations();const engineEpoch={body:0,selection:0};
+const webTranslator=createWebTranslator({fetcher:(...args)=>fetch(...args)});const engines=createEngineVault(undefined,{unifyTranslation:true});const permissionRevocations=createPermissionRevocations();const engineEpoch={body:0,selection:0,context:0};
 async function snapshot(tab){return {...await state.get(tab),engines:publicEngineSettings(await engines.read())};}
-function cancelEngineJobs(scope){for(const item of jobs.values())if(scope?item.type===(scope==='body'?'translate':'selection'):['translate','selection'].includes(item.type))item.controller.abort();}
+function cancelEngineJobs(scope){for(const item of jobs.values())if(scope?item.type===({body:'translate',selection:'selection',context:'context'})[scope]:['translate','selection','context'].includes(item.type))item.controller.abort();}
 function changedEngine(){return Object.assign(Error('翻译引擎已变化，请重新翻译'),{code:'ENGINE_CHANGED',retryable:false});}
 async function engineFor(scope,expected,job){
  const epoch=engineEpoch[scope],settings=await engines.read(),selected=publicEngineSettings(settings)[scope];
- if((expected??CLIENT_TRANSLATION_CACHE_VERSION)!==selected.cacheKey)throw changedEngine();
+ if((expected??(scope==='context'?selected.cacheKey:CLIENT_TRANSLATION_CACHE_VERSION))!==selected.cacheKey)throw changedEngine();
  const profile=settings.profiles.find(p=>p.id===selected.id)||webTranslationEngine(selected.id);
- job.engineURL=profile?.endpoint||TRANSLATION_ENDPOINT;if(permissionRevocations.affectsSince(job.permissionRevision,job.engineURL)){job.controller.abort();throw changedEngine();}
+ job.engineURL=profile?.endpoint||(scope==='context'?CONTEXT_ENDPOINT:TRANSLATION_ENDPOINT);if(permissionRevocations.affectsSince(job.permissionRevision,job.engineURL)){job.controller.abort();throw changedEngine();}
  if(profile){const url=new URL(profile.endpoint),pattern=url.protocol+'//'+url.hostname+'/*';let allowed=false;try{allowed=await chrome.permissions.contains({origins:[pattern]});}catch{/* Do not expose host/API details through browser errors. */}if(!allowed)throw Object.assign(Error('请在引擎设置中授权此 API 主机'),{code:'ENGINE_CONFIG',retryable:false});}
  if(epoch!==engineEpoch[scope])throw changedEngine();return {scope,profile,epoch,cacheKey:selected.cacheKey};
 }
@@ -76,7 +76,7 @@ async function handleMessage(m,sender,controller,job){
   if(!engineUI)throw Error('请通过扩展引擎设置管理 API');
   if(m.type==='engines:get')return engineSettingsForUI(await engines.read());
   if(m.type==='engines:save'){
-   const saved=await engines.save(m.settings,{onCommit:(after,before)=>{const old=publicEngineSettings(before),next=publicEngineSettings(after);for(const scope of ['body','selection'])if(old[scope].cacheKey!==next[scope].cacheKey){engineEpoch[scope]++;cancelEngineJobs(scope);}}});await broadcast();return engineSettingsForUI(saved);
+   const saved=await engines.save(m.settings,{onCommit:(after,before)=>{const old=publicEngineSettings(before),next=publicEngineSettings(after);for(const scope of ['body','selection','context'])if(old[scope].cacheKey!==next[scope].cacheKey){engineEpoch[scope]++;cancelEngineJobs(scope);}}});await broadcast();return engineSettingsForUI(saved);
   }
   if(m.type==='engines:test'){
    const settings=await engines.read(),profile=settings.profiles.find(p=>p.id===m.id)||webTranslationEngine(m.id);
@@ -132,14 +132,14 @@ async function handleMessage(m,sender,controller,job){
  if(['lookup','context','selection'].includes(m.type)&&!current.prefs.words)throw Error('点词查义已关闭');
  if(m.type==='selection'&&!online)throw Error('此网站未允许联网翻译');
  if(!controller)throw Error('无效查询');controller.signal.throwIfAborted();
- const engine=['translate','selection'].includes(m.type)?await engineFor(m.type==='selection'?'selection':'body',m.engineKey,job):null;
+ const engine=['translate','selection','context'].includes(m.type)?await engineFor(m.type==='context'?'context':m.type==='selection'?'selection':'body',m.engineKey,job):null;
  controller.signal.throwIfAborted();
   if(engine&&engine.epoch!==engineEpoch[engine.scope])throw changedEngine();
   if(m.type==='selection'){
    let cached;try{cached=await store.cacheGet(m.text,engine.cacheKey);}catch{/* Optional cache failure must not hide a usable service. */}
    controller.signal.throwIfAborted();if(engine.epoch!==engineEpoch[engine.scope])throw changedEngine();if(typeof cached==='string')return cached;
   }
-  const value=m.type==='lookup'?await lookupCollins(m.text,{online,signal:controller.signal}):m.type==='context'?await resolveContext(m.context,{signal:controller.signal}):webTranslationEngine(engine?.profile?.id)?await webTranslator.translate(engine.profile.id,m.text,{signal:controller.signal}):engine?.profile?await executeEngineTranslation(engine.profile,m.text,{signal:controller.signal}):await translate(m.text,fetch,{signal:controller.signal});
+  const value=m.type==='lookup'?await lookupCollins(m.text,{online,signal:controller.signal}):m.type==='context'?(engine?.profile?await executeEngineContext(engine.profile,m.context,{signal:controller.signal}):await resolveContext(m.context,{signal:controller.signal})):webTranslationEngine(engine?.profile?.id)?await webTranslator.translate(engine.profile.id,m.text,{signal:controller.signal}):engine?.profile?await executeEngineTranslation(engine.profile,m.text,{signal:controller.signal}):await translate(m.text,fetch,{signal:controller.signal});
   controller.signal.throwIfAborted();
   if(m.type==='selection'&&engine.epoch===engineEpoch[engine.scope])try{await store.cacheSet(m.text,value,engine.cacheKey);}catch{/* Translation remains usable without persistence. */}
   return value;

@@ -62,7 +62,7 @@ export function mountReader({root=document.body,transport=async(type,text,online
  const report=text=>{$('#status').textContent=text;};
  const translator=new ParagraphTranslator({root,demo,store,translate:(text,options)=>transport('translate',text,true,options),report,...schedulerOptions});
  let engineState=engines,selectionController=null,selectionSequence=0,selectionSource='';
- function engineLabels(){$('#engine-summary').textContent=(engineState.context?'点词语境：'+engineState.context.label+'；':'')+'正文：'+engineState.body.label+'；选文：'+engineState.selection.label;}
+ function engineLabels(){$('#engine-summary').textContent=(engineState.context?'查词 AI：'+engineState.context.label+'；':'')+'翻译：'+engineState.body.label;}
  const contextProviderName=()=>engineState.context&&engineState.context.id!=='builtin'?engineState.context.label:'Cloudflare Workers AI';
  translator.cacheNamespace=engineState.body.cacheKey;translator.sourceName=engineState.body.label;
  if(!('interval' in schedulerOptions))translator.interval=engineState.body.minInterval;

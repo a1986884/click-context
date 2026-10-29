@@ -6,7 +6,7 @@
 
 点击英文单词，结合当前原句查看中文含义与英文释义，展开词典义项核对用法。支持划词翻译、网页双语阅读，并可将这次词义连同原句收藏。
 
-[下载安装](#安装与体验) · [在线体验](https://52def8aa.lextide.pages.dev/product.html#experience) · [完整功能](#完整功能) · [使用方法](#开始使用) · [隐私说明](docs/PRIVACY.md)
+[下载安装](#安装与体验) · [在线体验](https://lextide.pages.dev/product.html#experience) · [完整功能](#完整功能) · [使用方法](#开始使用) · [隐私说明](docs/PRIVACY.md)
 
 ![语境精读：逐段双语阅读与设置入口](docs/images/closeread-bilingual.jpg)
 
@@ -24,7 +24,7 @@
 | --- | --- | --- |
 | 浏览器扩展 | 桌面 Chrome、Edge 等 Chromium 浏览器，开发者模式加载 | [安装与构建](docs/INSTALL.md) |
 | 用户脚本 | 通过 Tampermonkey 等脚本管理器试用 | [公开安装页](https://click-context-install.aa1986884.workers.dev/) · [脚本说明](userscript/README.zh-CN.md) |
-| 在线体验 | 无需安装，体验查词、双语阅读、选文翻译与收藏 | [直接体验](https://52def8aa.lextide.pages.dev/product.html#experience) |
+| 在线体验 | 无需安装，体验查词、双语阅读、选文翻译与收藏 | [直接体验](https://lextide.pages.dev/product.html#experience) |
 
 ## 开始使用
 
@@ -57,7 +57,7 @@
 | 三种显示模式 | 原文、双语、译文模式切换，可恢复英文原文 |
 | 本地生词本 | 保存词义与原句；搜索、排序、待核对筛选、编辑释义与核对状态、删除与撤销 |
 | 备份与迁移 | JSON 导入与导出；卸载或更换浏览器前可自行备份 |
-| 引擎与自带 API | 正文、选文翻译分别选择引擎，语境 AI 设置独立；真实配置在插件中完成 |
+| 引擎与自带 API | 查词与语境 AI、翻译引擎分别设置，正文和选文共用翻译引擎；真实配置在插件中完成 |
 | 阅读控制 | 词卡与按钮拖动、收起和位置重置；失败重试、缓存清理、深色外观，扩展按网站启用 |
 
 ## 隐私与结果来源

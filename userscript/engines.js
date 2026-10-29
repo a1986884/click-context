@@ -14,7 +14,7 @@ export function createUserscriptEngines({getValue,setValue,request,info,builtin,
  // Writes are not raced: a timed-out write might still modify stored keys later.
  const deadline=Number.isFinite(readTimeoutMs)&&readTimeoutMs>0?Math.min(3000,Math.max(1,Math.floor(readTimeoutMs))):3000;
  const readValue=()=>{let timer;return Promise.race([Promise.resolve().then(()=>getValue('click-context:v1:engines',null)),new Promise((_resolve,reject)=>timer=setTimeout(()=>reject(Error('引擎配置读取超时，未重置已有设置')),deadline))]).finally(()=>clearTimeout(timer));};
- const repository=createEngineRepository({get:readValue,set:state=>setValue('click-context:v1:engines',state)});
+ const repository=createEngineRepository({get:readValue,set:state=>setValue('click-context:v1:engines',state)},{unifyTranslation:true});
  let state=structuredClone(DEFAULT_ENGINE_SETTINGS),failure=null,serial=Promise.resolve(),reads=Promise.resolve(),selectedContextClient=null,refreshJob=null,refreshAgain=false;
  const cancelers=new Map();
  const safe=supportsSafeAPIRedirect(info),webTranslator=createWebTranslator({fetcher:createGMFetch(request)});

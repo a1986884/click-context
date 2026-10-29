@@ -25,3 +25,8 @@ test('reading an existing 0.7.85 profile preserves keys and its stable stored re
  const old={schema:1,body:'my-api',selection:'builtin',profiles:[{...configuration().profiles[0],protocol:'openai',region:'',tokenParameter:'max_tokens',cacheRevision:'01234567-89ab-cdef-0123-456789abcdef'}]};let writes=0;
  const repository=createEngineRepository({get:async()=>structuredClone(old),set:async()=>writes++});const first=await repository.read(),second=await repository.read();assert.equal(first.profiles[0].cacheRevision,old.profiles[0].cacheRevision);assert.equal(second.profiles[0].cacheRevision,first.profiles[0].cacheRevision);assert.equal(second.profiles[0].apiKey,old.profiles[0].apiKey);assert.equal(writes,0);
 });
+test('two-engine product migration unifies translation in memory and retains every saved API profile',async()=>{
+ const legacy=createEngineRepository({get:async()=>null,set:async()=>{}});const seeded=await legacy.save({...configuration(),context:'my-api'});let value=structuredClone(seeded),writes=0;
+ const repository=createEngineRepository({get:async()=>value,set:async next=>{writes++;value=next;}},{unifyTranslation:true});const current=await repository.read();assert.equal(current.selection,current.body);assert.equal(current.context,'my-api');assert.equal(writes,0);assert.equal(value.selection,'builtin');assert.deepEqual(current.profiles,seeded.profiles);
+ const saved=await repository.save({...current,body:'google-free',selection:'builtin'});assert.equal(saved.body,'google-free');assert.equal(saved.selection,'google-free');assert.equal(saved.context,'my-api');assert.deepEqual(saved.profiles,seeded.profiles);assert.equal(writes,1);
+});

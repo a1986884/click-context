@@ -8,7 +8,7 @@ const api={runtime:{id:'test-extension',getURL:p=>'chrome-extension://test-exten
 let offscreenExists=false;api.runtime.getContexts=async()=>offscreenExists?[{}]:[];api.offscreen={createDocument:async()=>{offscreenExists=true;}};api.runtime.sendMessage=async message=>({ok:true,data:parseDictionaryHTML(message.html,message.kind,{phrase:message.phrase})});
 globalThis.chrome=api;
 let engineFixture=null;api.engineFixture={get:async()=>engineFixture,set:async value=>{engineFixture=structuredClone(value);}};
-const source="import {createEngineRepository} from "+JSON.stringify(new URL('../src/engine-vault.js',import.meta.url).href)+";\n"+(await readFile(new URL('../extension/background.js',import.meta.url),'utf8')).replace('const engines=createEngineVault();','const engines=createEngineRepository(chrome.engineFixture);').replace("'./dictionary-lookup.js'",JSON.stringify(new URL('../extension/dictionary-lookup.js',import.meta.url).href)).replaceAll("'./src/","'"+new URL('../src/',import.meta.url).href);
+const source="import {createEngineRepository} from "+JSON.stringify(new URL('../src/engine-vault.js',import.meta.url).href)+";\n"+(await readFile(new URL('../extension/background.js',import.meta.url),'utf8')).replace('const engines=createEngineVault(undefined,{unifyTranslation:true});','const engines=createEngineRepository(chrome.engineFixture);').replace("'./dictionary-lookup.js'",JSON.stringify(new URL('../extension/dictionary-lookup.js',import.meta.url).href)).replaceAll("'./src/","'"+new URL('../src/',import.meta.url).href);
 await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'));
 const listener=api.runtime.onMessage.listeners[0],ui={id:api.runtime.id,url:api.runtime.getURL('popup.html')},content=id=>({id:api.runtime.id,tab:tabs[id-1],frameId:0,url:tabs[id-1].url});
 const send=(m,s=ui)=>new Promise(resolve=>listener(m,s,resolve));
@@ -187,4 +187,14 @@ test('extension keyless choices route both scopes, enforce host permissions and 
   api.permissions.contains=async({origins})=>!origins.includes('https://translate.googleapis.com/*');
   const denied=await send({type:'translate',text:'A different river.',online:true,requestId:'web-denied',engineKey:snapshot.engines.body.cacheKey},content(1));assert.equal(denied.code,'ENGINE_CONFIG');assert.equal(calls.length,3);
  }finally{api.permissions.contains=contains;globalThis.fetch=originalFetch;await send({type:'engines:save',settings:before},engineUI);}
+});
+test('native clicked-word context uses its selected AI and a context-only switch cancels that request',async()=>{
+ const original=globalThis.fetch,before=structuredClone(engineFixture),engineUI={id:api.runtime.id,url:api.runtime.getURL('engines.html')};let release,entered;const started=new Promise(r=>entered=r);
+ try{
+  const settings={body:'builtin',selection:'builtin',context:'context-api',profiles:[{id:'context-api',preset:'custom',label:'Context fixture',endpoint:'https://context.example/v1/chat/completions',model:'fixture',apiKey:'EXAMPLE_NATIVE_CONTEXT_KEY'}]};assert.equal((await send({type:'engines:save',settings},engineUI)).ok,true);await send({type:'control',action:'enable',tabId:1,prefs:{words:true}});
+  let snapshot=(await send({type:'bootstrap'},content(1))).data;const input={word:'bank',sentence:'They sat on the bank.',offset:16,senses:[],contextRevision:'ai-context-v6'};
+  globalThis.fetch=async(url,options)=>{assert.equal(new URL(url).hostname,'context.example');assert.equal(options.headers.Authorization,'Bearer EXAMPLE_NATIVE_CONTEXT_KEY');return Response.json({choices:[{finish_reason:'stop',message:{role:'assistant',content:JSON.stringify({senseId:null,lemma:'bank',pos:'NOUN',zh:'岸'})}}]});};
+  const result=await send({type:'context',text:'bank',online:true,context:input,requestId:'native-context',engineKey:snapshot.engines.context.cacheKey},content(1));assert.equal(result.data?.zh,'岸',JSON.stringify(result));
+  globalThis.fetch=async()=>{entered();return new Promise(r=>release=r);};const pending=send({type:'context',text:'bank',online:true,context:{...input,sentence:'They stood on the bank.',offset:18},requestId:'native-context-cancel',engineKey:snapshot.engines.context.cacheKey},content(1));await started;await send({type:'engines:save',settings:{...settings,context:'builtin'}},engineUI);assert.equal((await pending).code,'REQUEST_CANCELED');
+ }finally{release?.(Response.json({}));globalThis.fetch=original;await send({type:'engines:save',settings:before},engineUI);}
 });
