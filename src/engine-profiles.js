@@ -14,12 +14,18 @@ export const ENGINE_PRESETS=Object.freeze([
  {id:'plamo',name:'PLaMo / Preferred Networks',protocol:'openai',endpoint:'https://api.platform.preferredai.jp/v1/chat/completions'},
  {id:'siliconflow',name:'硅基流动',protocol:'openai',endpoint:'https://api.siliconflow.cn/v1/chat/completions'},
  {id:'ollama',name:'Ollama（本机）',protocol:'openai',endpoint:'http://localhost:11434/v1/chat/completions'},
- {id:'google',name:'Google Cloud Translation',protocol:'google',endpoint:'https://translation.googleapis.com/language/translate/v2'},
- {id:'microsoft',name:'Microsoft Translator',protocol:'microsoft',endpoint:'https://api.cognitive.microsofttranslator.com/translate'},
+ {id:'google',name:'Google Cloud Translation（自带 API）',protocol:'google',endpoint:'https://translation.googleapis.com/language/translate/v2'},
+ {id:'microsoft',name:'Microsoft Azure Translator（自带 API）',protocol:'microsoft',endpoint:'https://api.cognitive.microsofttranslator.com/translate'},
  {id:'deepl',name:'DeepL API',protocol:'deepl',endpoint:'https://api-free.deepl.com/v2/translate'},
  {id:'custom',name:'自定义 OpenAI 兼容 API',protocol:'openai',endpoint:''}
 ]);
 export const CONTEXT_PROTOCOLS=Object.freeze(['openai','responses','anthropic','gemini']);
+// Public web translators are independent from user-owned Cloud/Azure API profiles.
+export const WEB_TRANSLATION_ENGINES=Object.freeze([
+ {id:'google-free',label:'谷歌翻译（免填 Key）',endpoint:'https://translate.googleapis.com/translate_a/single',cacheKey:'web:google:en-zh:v6',minInterval:1200},
+ {id:'microsoft-free',label:'微软翻译（免填 Key）',endpoint:'https://www.bing.com/ttranslatev3',cacheKey:'web:microsoft:en-zh:v6',minInterval:1200}
+]);
+export const webTranslationEngine=id=>WEB_TRANSLATION_ENGINES.find(engine=>engine.id===id);
 export const DEFAULT_ENGINE_SETTINGS=Object.freeze({schema:1,body:'builtin',selection:'builtin',context:'builtin',profiles:[]});
 const BUILTIN=Object.freeze({id:'builtin',label:'Cloudflare AI',cacheKey:CLIENT_TRANSLATION_CACHE_VERSION,minInterval:1200});
 const BUILTIN_CONTEXT=Object.freeze({id:'builtin',label:'Cloudflare AI',cacheKey:'context:builtin:v1'});
@@ -34,7 +40,7 @@ export function engineEndpoint(value){
 export function normalizeEngineSettings(input={},previous=DEFAULT_ENGINE_SETTINGS){
  if(!input||typeof input!=='object'||!Array.isArray(input.profiles)||input.profiles.length>20)throw Error('无效引擎配置');
  const seen=new Set();const profiles=input.profiles.map(item=>{
-  if(!item||typeof item.id!=='string'||!/^[\w-]{1,64}$/.test(item.id)||item.id==='builtin'||seen.has(item.id))throw Error('引擎配置 ID 无效或重复');seen.add(item.id);
+  if(!item||typeof item.id!=='string'||!/^[\w-]{1,64}$/.test(item.id)||(item.id==='builtin'||webTranslationEngine(item.id))||seen.has(item.id))throw Error('引擎配置 ID 无效或重复');seen.add(item.id);
   const preset=ENGINE_PRESETS.find(x=>x.id===item.preset);if(!preset||item.protocol&&item.protocol!==preset.protocol)throw Error('无效引擎协议');
   const old=previous.profiles.find(x=>x.id===item.id),endpoint=engineEndpoint(item.endpoint??preset.endpoint);
   const label=typeof item.label==='string'?item.label.trim():preset.name,model=typeof item.model==='string'?item.model.trim():'';
@@ -52,13 +58,13 @@ export function normalizeEngineSettings(input={},previous=DEFAULT_ENGINE_SETTING
   const same=old&&Object.keys(value).every(key=>value[key]===old[key]);return {...value,cacheRevision:same?old.cacheRevision:crypto.randomUUID()};
  });
  const body=input.body??previous.body,selection=input.selection??previous.selection,context=input.context??previous.context??'builtin';
- for(const id of [body,selection,context])if(id!=='builtin'&&!seen.has(id))throw Error('请选择仍存在的引擎配置');
- if(context!=='builtin'&&!llm.has(profiles.find(p=>p.id===context).protocol))throw Error('语境释义需要 AI 配置；Google、Microsoft 和 DeepL 仅用于正文或选文翻译');
+ for(const id of [body,selection,context])if(id!=='builtin'&&!webTranslationEngine(id)&&!seen.has(id))throw Error('请选择仍存在的引擎配置');
+ if(context!=='builtin'&&!llm.has(profiles.find(p=>p.id===context)?.protocol))throw Error('语境释义需要 AI 配置；Google、Microsoft 和 DeepL 仅用于正文或选文翻译');
  return {schema:1,body,selection,context,profiles};
 }
 function publicProfile(profile){return {id:profile.id,label:profile.label,cacheKey:'engine:'+profile.id+':'+profile.cacheRevision+':en-zh:v6',minInterval:llm.has(profile.protocol)?250:100};}
 export function publicEngineSettings(state=DEFAULT_ENGINE_SETTINGS){
- const profiles=[BUILTIN,...state.profiles.map(publicProfile)],selected=state.profiles.find(p=>p.id===state.context);
+ const profiles=[BUILTIN,...WEB_TRANSLATION_ENGINES,...state.profiles.map(publicProfile)],selected=state.profiles.find(p=>p.id===state.context);
  const context=selected?{...publicProfile(selected),cacheKey:'context:'+selected.id+':'+selected.cacheRevision+':v1'}:BUILTIN_CONTEXT;
  return {body:profiles.find(x=>x.id===state.body),selection:profiles.find(x=>x.id===state.selection),context,profiles};
 }
