@@ -1,9 +1,9 @@
-import {ENGINE_PRESETS} from './src/engine-profiles.js';
+import {CONTEXT_PROTOCOLS,WEB_TRANSLATION_ENGINES,ENGINE_PRESETS} from './src/engine-profiles.js';
 // A public UI preview: no credentials, persistence, runtime impersonation or
 // provider requests. Real API configuration stays in the extension's origin.
 const $=id=>document.getElementById(id),add=(select,value,label)=>{const o=document.createElement('option');o.value=value;o.textContent=label;select.append(o);};
 $('controls').disabled=false;$('editor').hidden=false;
-for(const id of ['body-engine','selection-engine']){add($(id),'builtin','Cloudflare AI（默认）');for(const p of ENGINE_PRESETS)add($(id),p.id,p.name);}
+for(const id of ['context-engine','body-engine']){add($(id),'builtin','Cloudflare AI（默认）');if(id==='body-engine')for(const p of WEB_TRANSLATION_ENGINES)add($(id),p.id,p.label);for(const p of ENGINE_PRESETS)if(id==='body-engine'||CONTEXT_PROTOCOLS.includes(p.protocol))add($(id),p.id,p.name);}
 for(const p of ENGINE_PRESETS)add($('preset'),p.id,p.name);
 add($('profile'),'example','服务配置示意');$('profile').disabled=true;
 for(const id of ['api-key','clear-key','add','remove','save','test'])$(id).disabled=true;
