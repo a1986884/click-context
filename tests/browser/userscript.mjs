@@ -28,7 +28,7 @@ try{
   },{api,dictionary});
   await page.evaluate(code);const panel=page.locator('lextide-reader .panel');await panel.waitFor();
   assert.equal(await page.locator('lextide-reader #words').isChecked(),false);assert.equal(await page.evaluate(()=>__requests.length),0);
-  assert.match(await panel.textContent(),/API 配置保存在脚本管理器/);report.checks.push(api+': starts disabled, no initial requests and disclosure shown');
+  report.checks.push(api+': starts disabled with reading settings and no initial requests');
   await page.locator('lextide-reader #words').check();await page.locator('lextide-reader .panel .close').click();await page.locator('#word').tap();
   await page.waitForFunction(()=>document.querySelector('lextide-reader').shadowRoot.querySelector('.zh').textContent==='岸；河岸');
   assert.equal(await page.locator('lextide-reader #sense-choice').inputValue(),'collins-2');

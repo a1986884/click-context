@@ -66,8 +66,6 @@ import {createSitePolicy,mountSiteControls} from './site-controls.js';
  }
  await applyPolicy(policy.state);
  const siteControls=mountSiteControls({reader,policy,savePrefs:prefs=>savePrefs(resumePrefs||prefs),onPolicyChange:applyPolicy,addListener,removeListener});
- const note=document.createElement('p');note.className='muted';note.textContent='语境精读 '+USERSCRIPT_VERSION+' · 可记住此网站设置，下次继续使用。开启后，单词发给有道公开词条，原句和候选词义发给你选择的语境 AI（默认内置 Cloudflare AI）；词条栏目不可读时会查询预览词条 API。点词语境、选文和正文分别选择服务，发送各自需要的文本，不自动切换。生词与 API 配置保存在脚本管理器中。';
- reader.shadow.querySelector('.panel .top').after(note);
  const diagnosticsButton=document.createElement('button');diagnosticsButton.id='connection-diagnostics';diagnosticsButton.type='button';diagnosticsButton.textContent='连接检查 / 诊断';diagnosticsButton.onclick=()=>diagnosticsPanel.open();reader.shadow.querySelector('.panel .row').append(diagnosticsButton);
  register?.('语境精读：阅读设置',()=>{dismissAutomaticIntroduction();enginePanel.close();diagnosticsPanel.close();reader.openSettings();});
  register?.('语境精读：生词本',()=>{dismissAutomaticIntroduction();enginePanel.close();diagnosticsPanel.close();return reader.openVocabulary();});
