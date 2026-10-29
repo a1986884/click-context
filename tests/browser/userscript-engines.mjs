@@ -15,7 +15,7 @@ try{
   window.__values={};window.__calls=[];window.__menus={};window.__confirm=false;window.__status=200;
   window.GM_info={scriptHandler:'Tampermonkey',version:'5.6.6239'};window.GM_getValue=(k,d)=>__values[k]??d;window.GM_setValue=(k,v)=>__values[k]=structuredClone(v);window.GM_registerMenuCommand=(k,fn)=>__menus[k]=fn;
   window.__promptMode='normal';window.prompt=()=>__promptMode==='async'?new Promise(resolve=>window.__resolveKey=resolve):'synthetic-browser-key-only';window.confirm=()=>__confirm;
-  window.GM_xmlhttpRequest=d=>{__calls.push({url:d.url,body:d.data,headers:d.headers,redirect:d.redirect});const timer=setTimeout(()=>d.onload({status:__status,response:JSON.stringify(__status===200?(d.url.includes('custom.example')?{choices:[{finish_reason:'stop',message:{content:'河流很安静。'}}]}:{ok:true,data:{text:'河流很安静。。',version:JSON.parse(d.data).translationRevision}}):{error:'synthetic-browser-key-only'})}),10);return {abort(){clearTimeout(timer);d.onabort();}};};
+  window.GM_xmlhttpRequest=d=>{__calls.push({url:d.url,body:d.data,headers:d.headers,redirect:d.redirect});const timer=setTimeout(()=>d.onload({status:__status,response:JSON.stringify(__status===200?(d.url.includes('custom.example')?{choices:[{finish_reason:'stop',message:{content:'河流很安静。'}}]}:{ok:true,data:{text:'内置正文译文。',version:JSON.parse(d.data).translationRevision}}):{error:'synthetic-browser-key-only'})}),10);return {abort(){clearTimeout(timer);d.onabort();}};};
  });
  await page.evaluate(code);await page.locator('lextide-reader .panel').waitFor();await page.locator('lextide-reader .panel .close').click();
  await page.evaluate(()=>__menus['语境精读：引擎 / 我的 API']());await page.waitForFunction(()=>!__settings.querySelector('#controls').disabled);
