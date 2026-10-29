@@ -51,3 +51,12 @@ test('explicitly incomplete model output cannot become a cached contextual meani
  for(const raw of [{status:'incomplete',response:JSON.stringify(result)},{incomplete_details:{reason:'max_output_tokens'},response:JSON.stringify(result)},{choices:[{finish_reason:'length',message:{content:JSON.stringify(result)}}]}])assert.throws(()=>parseContextResult(raw,input),/不完整/);
  assert.equal(parseContextResult({status:'completed',incomplete_details:null,response:JSON.stringify(result)},input).zh,'河岸');
 });
+
+test('production preview origin supports context requests and preflight',async()=>{
+ const origin='https://lextide.pages.dev';
+ const response=await worker.fetch(new Request('https://context.test/meaning',{method:'OPTIONS',headers:{Origin:origin}}),{});
+ assert.equal(response.status,204);assert.equal(response.headers.get('Access-Control-Allow-Origin'),origin);
+ const env={AI:{run:async()=>({response:'{"senseId":"river","zh":"河岸"}'})},PER_IP:{limit:async()=>({success:true})},TOTAL:{limit:async()=>({success:true})}};
+ const result=await worker.fetch(new Request('https://context.test/meaning',{method:'POST',headers:{Origin:origin,'Content-Type':'application/json'},body:JSON.stringify(input)}),env);
+ assert.equal(result.status,200);assert.equal(result.headers.get('Access-Control-Allow-Origin'),origin);
+});
