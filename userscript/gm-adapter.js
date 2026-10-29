@@ -1,5 +1,5 @@
 // Privileged APIs are passed from the userscript sandbox, never from unsafeWindow.
-export const NETWORK_HOSTS=Object.freeze(['dict.youdao.com','lextide-context.aa1986884.workers.dev','v04-preview.lextide.pages.dev']);
+export const NETWORK_HOSTS=Object.freeze(['translate.googleapis.com','www.bing.com','dict.youdao.com','lextide-context.aa1986884.workers.dev','v04-preview.lextide.pages.dev']);
 export function createGMFetch(request,{allowedOrigins=[],timeoutMs=25000}={}){
  const deadlineMs=Number.isFinite(timeoutMs)&&timeoutMs>0?Math.min(25000,Math.max(1,Math.floor(timeoutMs))):25000;
  return async(url,options={})=>{

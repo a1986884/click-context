@@ -30,6 +30,8 @@ const header=`// ==UserScript==
 // @grant        GM.registerMenuCommand
 // @grant        GM_info
 // @grant        GM.info
+// @connect      translate.googleapis.com
+// @connect      www.bing.com
 // @connect      dict.youdao.com
 // @connect      lextide-context.aa1986884.workers.dev
 // @connect      v04-preview.lextide.pages.dev

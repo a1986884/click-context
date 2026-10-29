@@ -12,5 +12,12 @@
       "tests/browser/userscript-panel-switching.mjs"
     ],
     "reason": "Verified SYNTHETIC_PANEL_TEST_KEY in the original ordinary-browser GM mock: requests are recorded locally and never sent to a vendor. Replaced with explicit EXAMPLE placeholder in 0.7.114. Review applies only to this complete Git blob and exact path set; no future file content or credential pattern is exempt."
+  },
+  {
+    "object": "a4f84d887d02869d38f9fded4a352fde09f65496",
+    "paths": [
+      "tests/web-translators.test.mjs"
+    ],
+    "reason": "Verified synthetic retained-key value in the keyless-engine GM storage unit fixture. Requests are handled by the local mock and never sent to a vendor. Replaced with an explicit EXAMPLE placeholder. Review applies only to this complete Git blob and exact path set."
   }
 ]

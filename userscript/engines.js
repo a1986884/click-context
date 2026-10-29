@@ -1,7 +1,8 @@
 import {createEngineRepository} from '../src/engine-vault.js';
 import {executeEngineTranslation,executeEngineContext} from '../src/engine-executor.js';
 import {createContextClient,CONTEXT_CURRENT_REVISION} from '../src/context-meaning.js';
-import {publicEngineSettings,DEFAULT_ENGINE_SETTINGS,normalizeEngineSettings,engineSettingsForUI} from '../src/engine-profiles.js';
+import {webTranslationEngine,publicEngineSettings,DEFAULT_ENGINE_SETTINGS,normalizeEngineSettings,engineSettingsForUI} from '../src/engine-profiles.js';
+import {createWebTranslator} from '../src/web-translators.js';
 import {createGMFetch} from './gm-adapter.js';
 export function supportsSafeAPIRedirect(info){
  if(info?.scriptHandler!=='Tampermonkey'||typeof info.version!=='string')return false;
@@ -16,7 +17,7 @@ export function createUserscriptEngines({getValue,setValue,request,info,builtin,
  const repository=createEngineRepository({get:readValue,set:state=>setValue('click-context:v1:engines',state)});
  let state=structuredClone(DEFAULT_ENGINE_SETTINGS),failure=null,serial=Promise.resolve(),reads=Promise.resolve(),selectedContextClient=null,refreshJob=null,refreshAgain=false;
  const cancelers=new Map();
- const safe=supportsSafeAPIRedirect(info);
+ const safe=supportsSafeAPIRedirect(info),webTranslator=createWebTranslator({fetcher:createGMFetch(request)});
  function revision(value){return JSON.stringify([value.body,value.selection,value.context??'builtin',value.profiles.map(p=>[p.id,p.cacheRevision])]);}
  function publicView(value){const view={...engineSettingsForUI(value),revision:revision(value)},text=JSON.stringify(view);if(value.profiles.some(p=>p.apiKey&&text.includes(p.apiKey)))throw Error('配置名称、模型和地址不能包含密钥');return view;}
  function commit(next){const old=publicEngineSettings(state),value=publicEngineSettings(next);for(const [controller,scope]of cancelers)if(old[scope].cacheKey!==value[scope].cacheKey)controller.abort();if(old.context.cacheKey!==value.context.cacheKey)selectedContextClient=null;state=next;failure=null;}
@@ -42,7 +43,7 @@ export function createUserscriptEngines({getValue,setValue,request,info,builtin,
  function publicSettings(){const value=publicEngineSettings(state);if(failure)for(const scope of ['body','selection','context'])value[scope]={id:'unreadable',label:'引擎配置无法读取',cacheKey:scope==='context'?'unreadable:context':'unreadable',minInterval:1200};return value;}
  function validateManagerSave(next,previous){
   if(safe||!next.profiles.length)return;
-  if(['body','selection','context'].some(scope=>next[scope]!=='builtin'))throw Error('当前管理器未确认支持安全 API 请求；请将点词语境、正文和选文都选为内置服务后保存。已有 API 配置可原样保留。');
+  if(['body','selection','context'].some(scope=>next[scope]!=='builtin'&&!webTranslationEngine(next[scope])))throw Error('当前管理器未确认支持安全 API 请求；请将点词语境、正文和选文都选为内置服务后保存。已有 API 配置可原样保留。');
   const unchanged=next.profiles.length===previous.profiles.length&&next.profiles.every((profile,index)=>{
    const old=previous.profiles[index];return Object.keys(profile).every(key=>profile[key]===old[key])&&Object.keys(old).every(key=>profile[key]===old[key]);
   });
@@ -114,6 +115,7 @@ export function createUserscriptEngines({getValue,setValue,request,info,builtin,
   const signal=options.signal?AbortSignal.any([options.signal,controller.signal]):controller.signal;
   try{
    if(selected==='builtin')return await finish(await builtin.translate(text,{...options,signal}),signal);
+   if(webTranslationEngine(selected))return await finish(await webTranslator.translate(selected,text,{signal}),signal);
    const profile=state.profiles.find(p=>p.id===selected);if(!profile)throw Error('所选配置已移除，请重新选择');
    return await finish(await runProfile(profile,text,{signal}),signal);
   }finally{cancelers.delete(controller);}
