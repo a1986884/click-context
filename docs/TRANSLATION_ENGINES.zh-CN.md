@@ -1,16 +1,16 @@
 # 独立翻译引擎：产品与接入约束
 
-用户已确认：保留 Collins 词典卡，另加选中文本翻译；正文与选文各选引擎，接入自带 API。下一阶段不再只围绕开源检查迭代。
+用户已确认：保留 Collins 词典卡，另加选中文本翻译；查词与翻译各选引擎，接入自带 API。下一阶段不再只围绕开源检查迭代。
 
 ## 免填 Key 翻译
 
-正文和选文可直接选择“谷歌翻译（免填 Key）”或“微软翻译（免填 Key）”，保存后使用。Google Cloud Translation、Microsoft Azure Translator 仍作为自带 API 配置保留。点词语境 AI 单独选择。
+翻译引擎可直接选择“谷歌翻译（免填 Key）”或“微软翻译（免填 Key）”，保存后使用。Google Cloud Translation、Microsoft Azure Translator 仍作为自带 API 配置保留。查词与语境 AI 负责点词和划选短语查义，正文与选文共用翻译引擎。
 
 免填 Key 服务使用 Google 网页翻译接口及 Bing Translator 网页接口；微软页面参数仅在内存中短期缓存，请求不携带用户 Cookie。请求按 600 字符分段，沿用数值校验、取消和引擎缓存隔离。协议核对参考 [Readest 的 Microsoft 适配源码](https://github.com/readest/readest/blob/main/apps/readest-app/src/services/translators/providers/azure.ts)及 [共享协议参数](https://github.com/readest/readest/blob/main/apps/readest-app/src/services/translators/providers/azureShared.ts)。
 
 ## 产品范围
 
-- 正文翻译与选文翻译分别选择配置，能够选择同一服务的不同模型/密钥配置。
+- 设置仅保留“查词与语境 AI”和“翻译引擎”；正文与选文统一沿用原正文引擎。旧 API 配置与存储键保持兼容。
 - 点击词条仍显示 Collins 原义及明确标识的 AI 语境释义。选文直译另有入口，不冒充词典原义，不因为纯选择动作自动联网。
 - 第一批适配官方 Google Cloud Translation、Microsoft Translator，以及 OpenAI 兼容、Anthropic Messages、Gemini GenerateContent。服务预设和自定义配置使用相同协议适配器，模型 ID 可编辑，不把某个过期型号或服务清单写死成能力。
 - Google/微软官方 API 与网页翻译、会员订阅是不同服务。各 AI 的聊天会员不保证提供 API 额度。插件不会复用会员 Cookie、抓取私有接口或绕过访问控制。
