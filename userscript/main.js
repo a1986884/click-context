@@ -10,6 +10,7 @@ import {createEngineSettingsSync} from './engine-sync.js';
 import {mountUserscriptEngineSettings} from './engine-settings.js';
 import {createConnectionDiagnostics,mountConnectionDiagnostics} from './diagnostics.js';
 import {USERSCRIPT_VERSION} from './version.js';
+import {createSitePolicy,mountSiteControls} from './site-controls.js';
 
 (async()=>{
  if(window.top!==window.self||document.querySelector('lextide-reader'))return;
@@ -21,10 +22,12 @@ import {USERSCRIPT_VERSION} from './version.js';
  const register=typeof GM_registerMenuCommand==='function'?GM_registerMenuCommand:modern?.registerMenuCommand?.bind(modern);
  if(!request||!getValue||!setValue){alert('语境精读：此管理器未提供联网或脚本存储接口，请使用兼容 Tampermonkey 的管理器。');return;}
  const fetcher=createGMFetch(request),store=createStore(createGMAdapter({getValue,setValue,origin:location.origin}));
- const readPrefs=store.prefs;
- // Every page load starts offline in the product sense: no lookup or body work
- // until the user enables it. Saved layout preferences remain available.
- store.prefs=async()=>({...await readPrefs(),words:false,enabled:false,mode:'original'});
+ const policy=createSitePolicy({getValue,setValue,url:location.href});
+ try{await policy.read();}catch{}
+ const readPrefs=store.prefs,savePrefs=store.savePrefs;
+ let pageLeft=false,accessController=new AbortController(),accessBlocked=false,resumePrefs=null,policyApplied=false;
+ store.prefs=async()=>policy.initialPrefs(await readPrefs());
+ store.savePrefs=prefs=>pageLeft||policy.state.blocked?Promise.resolve():savePrefs(prefs);
  const lookup=cacheWordLookup(createUserscriptDictionary(fetcher));
  const context=createContextClient({fetcher,revision:CONTEXT_CURRENT_REVISION,endpoint:'https://lextide-context.aa1986884.workers.dev/userscript/meaning'}),translator=createTranslationProvider({fetcher,endpoint:'https://lextide-context.aa1986884.workers.dev/userscript/translate'});
  const info=typeof GM_info==='object'?GM_info:modern?.info;
@@ -33,7 +36,7 @@ import {USERSCRIPT_VERSION} from './version.js';
  async function applyEngines(value){
   if(!reader)return;const sequence=++settingsSequence;
   const bodyChanged=currentEngines.body.cacheKey!==value.body.cacheKey;currentEngines=value;
-  if(bodyChanged)await reader.setEnabled(false);
+  if(bodyChanged){if(resumePrefs)resumePrefs={...resumePrefs,enabled:false};await reader.setEnabled(false);}
   if(sequence!==settingsSequence)return;
   await reader.configureEngines(engines.publicSettings(),{restart:false});
  }
@@ -44,7 +47,9 @@ import {USERSCRIPT_VERSION} from './version.js';
  currentEngines=engines.publicSettings();
  function clearIntroductionListeners(){document.removeEventListener('pointerdown',dismissAutomaticIntroduction,true);document.removeEventListener('keydown',dismissAutomaticIntroduction,true);}
  function dismissAutomaticIntroduction(){introductionAllowed=false;clearIntroductionListeners();}
- reader=mountReader({contextRevision:CONTEXT_CURRENT_REVISION,store,engines:engines.publicSettings(),onOpenEngines:()=>enginePanel.open(),onOpenContextEngines:()=>enginePanel.open(),isAuxiliaryUIEvent:event=>enginePanel?.ownsEvent(event)||diagnosticsPanel?.ownsEvent(event),transport:(type,text,online,options={})=>{
+ reader=mountReader({contextRevision:CONTEXT_CURRENT_REVISION,store,canActivate:()=>!policy.state.blocked,activationMessage:()=>policy.state.message,engines:engines.publicSettings(),onOpenEngines:()=>enginePanel.open(),onOpenContextEngines:()=>enginePanel.open(),isAuxiliaryUIEvent:event=>enginePanel?.ownsEvent(event)||diagnosticsPanel?.ownsEvent(event),transport:(type,text,online,options={})=>{
+  if(policy.state.blocked)throw Error(policy.state.message);
+  options={...options,signal:options.signal?AbortSignal.any([options.signal,accessController.signal]):accessController.signal};
   if(type==='lookup')return lookup(text,{...options,online});
   if(type==='context')return engines.context(options.context,options);
   return engines.translate(type==='selection'?'selection':'body',text,options);
@@ -52,7 +57,16 @@ import {USERSCRIPT_VERSION} from './version.js';
  enginePanel=mountUserscriptEngineSettings({engines,fallbackFocus:()=>reader.shadow.querySelector('.bubble'),onOpen:()=>{dismissAutomaticIntroduction();diagnosticsPanel.close();},onChange:applyEngines});
  diagnosticsPanel=mountConnectionDiagnostics({diagnostics:createConnectionDiagnostics({fetcher,info}),fallbackFocus:()=>reader.shadow.querySelector('.bubble'),onOpen:()=>{dismissAutomaticIntroduction();enginePanel.close();}});
  await reader.ready;
- const note=document.createElement('p');note.className='muted';note.textContent='油猴试用版 '+USERSCRIPT_VERSION+' · 每次打开网页默认关闭。开启后，单词发给有道公开词条，原句和候选词义发给你选择的语境 AI（默认内置 Cloudflare AI）；词条栏目不可读时会查询预览词条 API。点词语境、选文和正文分别选择服务，发送各自需要的文本，不自动切换。生词与 API 配置保存在脚本管理器中。';
+ async function applyPolicy(state){
+  const first=!policyApplied;policyApplied=true;
+  if(state.blocked===accessBlocked)return;
+  accessBlocked=state.blocked;
+  if(state.blocked){accessController.abort();resumePrefs=first&&state.remember&&!state.sensitive?await readPrefs():reader.preferences;await reader.configure({...reader.preferences,words:false,enabled:false});}
+  else{accessController=new AbortController();const prefs=resumePrefs||policy.initialPrefs(await readPrefs());resumePrefs=null;await reader.configure(prefs);}
+ }
+ await applyPolicy(policy.state);
+ const siteControls=mountSiteControls({reader,policy,savePrefs:prefs=>savePrefs(resumePrefs||prefs),onPolicyChange:applyPolicy,addListener,removeListener});
+ const note=document.createElement('p');note.className='muted';note.textContent='语境精读 '+USERSCRIPT_VERSION+' · 可记住此网站设置，下次继续使用。开启后，单词发给有道公开词条，原句和候选词义发给你选择的语境 AI（默认内置 Cloudflare AI）；词条栏目不可读时会查询预览词条 API。点词语境、选文和正文分别选择服务，发送各自需要的文本，不自动切换。生词与 API 配置保存在脚本管理器中。';
  reader.shadow.querySelector('.panel .top').after(note);
  const diagnosticsButton=document.createElement('button');diagnosticsButton.id='connection-diagnostics';diagnosticsButton.type='button';diagnosticsButton.textContent='连接检查 / 诊断';diagnosticsButton.onclick=()=>diagnosticsPanel.open();reader.shadow.querySelector('.panel .row').append(diagnosticsButton);
  register?.('语境精读：阅读设置',()=>{dismissAutomaticIntroduction();enginePanel.close();diagnosticsPanel.close();reader.openSettings();});
@@ -60,9 +74,8 @@ import {USERSCRIPT_VERSION} from './version.js';
  register?.('语境精读：引擎 / 我的 API',()=>enginePanel.open());
  register?.('语境精读：连接检查',()=>diagnosticsPanel.open());
  // Register navigation cleanup before optional introduction storage can stall.
- let pageLeft=false;
- window.addEventListener('pagehide',()=>{pageLeft=true;engineSync.stop();dismissAutomaticIntroduction();reader.restore();enginePanel.close({restoreFocus:false});diagnosticsPanel.close({restoreFocus:false});});
- window.addEventListener('pageshow',event=>{if(event.persisted){pageLeft=false;engineSync.start({refreshNow:true});}});
+ window.addEventListener('pagehide',()=>{pageLeft=true;engineSync.stop();siteControls.stop();dismissAutomaticIntroduction();reader.restore();enginePanel.close({restoreFocus:false});diagnosticsPanel.close({restoreFocus:false});});
+ window.addEventListener('pageshow',event=>{if(event.persisted){pageLeft=false;engineSync.start({refreshNow:true});siteControls.start();void siteControls.sync();}});
  // Explain network use once; subsequent pages keep only the disabled floating button.
  // This advisory flag must not turn a usable reader into a startup failure.
  let showIntroduction=false;
